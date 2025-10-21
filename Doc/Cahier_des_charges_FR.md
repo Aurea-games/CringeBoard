@@ -54,7 +54,11 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
 - Classement des articles selon popularité / nombre de favorisation
 - Importation de flux personnalisés (RSS privés, flux externes)
 - Édition / commentaire des articles (modération)
-- Internationalisation (multilingue)
+- Internationalisation (multilingue) -> anglais / français / coréen
+
+### 2.3 Fonctionnalités optionnelles / futures
+Ces fonctionnalités pourront être envisagées pour des versions ultérieures, mais ne sont pas détaillées dans ce cahier des charges initial.
+- Panel d'administration pour gérer les sources, modérer les contenus et utilisateurs
 
 ---
 
@@ -200,6 +204,48 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
   4. L'utilisateur ouvre la notification et accède directement à l'article ou au journal concerné
 - **Postconditions** : L'utilisateur est tenu informé des nouveaux contenus pertinents
 
+#### 3.1.16 Gérer ses favoris (voir / retirer)
+- Acteur : Utilisateur connecté
+- Scénario :
+  1. L'utilisateur ouvre la page Favoris
+  2. Il parcourt ses favoris, éventuellement avec pagination
+  3. Il peut retirer un article des favoris
+- Postconditions : La liste de favoris reflète les changements
+
+#### 3.1.17 Modifier ou supprimer un journal
+- Acteur : Utilisateur connecté
+- Préconditions : Le journal existe et appartient à l'utilisateur
+- Scénario :
+  1. Depuis « Mes journaux », l'utilisateur choisit un journal
+  2. Il modifie le titre/description/visibilité puis enregistre, ou supprime le journal
+- Postconditions : Le journal est mis à jour ou supprimé
+
+#### 3.1.18 Rendre un journal public et partager
+- Acteur : Utilisateur connecté
+- Préconditions : Un journal existe
+- Scénario :
+  1. L'utilisateur active l'option « Rendre public » pour un journal
+  2. Le système génère/active un lien public partageable
+- Postconditions : Le journal est accessible en lecture via une URL publique
+
+#### 3.1.19 Retirer un article d'un journal
+- Acteur : Utilisateur connecté
+- Préconditions : Le journal existe et contient l'article
+- Scénario :
+  1. L'utilisateur ouvre le journal et localise l'article
+  2. Il choisit « Retirer du journal »
+- Postconditions : L'article n'apparaît plus dans le journal
+
+#### 3.1.20 Gérer ses sources préférées
+- Acteur : Utilisateur connecté
+- Scénario :
+  1. L'utilisateur ouvre ses préférences de sources
+  2. Il ajoute/retire des sources suivies
+  3. Le flux personnalisé s'actualise en conséquence
+- Postconditions : Les sources favorites influencent le flux
+
+
+
 ### 3.2 Interfaces utilisateur (wireframes / écrans principaux)
 1. **Page d'accueil / flux** : grille ou carte d'articles, barre de recherche, menu / filtres
 2. **Article (aperçu / lien)** : image, titre, extrait, lien "Lire la suite", boutons (favori, partager)
@@ -212,20 +258,98 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
 
 #### 3.3.1 Endpoints possibles
 
+— Authentification et session
+
 | Endpoint | Méthode | Paramètres / Body | Description |
 |----------|--------|------------------|-------------|
-| `/articles` | GET | `page`, `limit`, `sources`, `keywords`, `themes` | Retourne une liste paginée d'articles |
-| `/articles/:id` | GET | — | Détail d'un article (métadonnées) |
-| `/favorites` | GET | `userId` ou token | Retourne la liste des favoris |
-| `/favorites` | POST | `{ articleId, userId }` | Ajoute un favori |
-| `/favorites/:id` | DELETE | — | Supprime un favori |
-| `/journals` | GET / POST | `userId` / `{ title, description }` | Liste les journaux de l'utilisateur / crée un nouveau journal |
-| `/journals/:id/articles` | GET / POST | filtres / `{ title, content, media, status }` | Liste ou ajoute des articles au journal ciblé |
-| `/notifications` | GET / PUT | `userId` / `{ channels, topics }` | Récupère ou met à jour les préférences de notification |
-| `/users/register` | POST | `{ email, password }` | Crée un utilisateur (optionnel) |
-| `/users/login` | POST | `{ email, password }` | Authentifie l'utilisateur |
-| `/users/profile` | GET / PUT | — / données de profil | Récupère / modifie le profil utilisateur |
-| `/sources` | GET / POST / PUT / DELETE | selon action | Gérer les sources (nom, URL, thème) (partie admin) |
+| `/v1/auth/register` | POST | `{ email, password }` | Création de compte |
+| `/v1/auth/login` | POST | `{ email, password }` | Authentification et émission de tokens |
+| `/v1/auth/refresh` | POST | `{ refreshToken }` | Rafraîchit le token d'accès |
+| `/v1/auth/logout` | POST | - | Invalide la session/token |
+| `/v1/auth/forgot-password` | POST | `{ email }` | Demande de réinitialisation |
+| `/v1/auth/reset-password` | POST | `{ token, newPassword }` | Réinitialise le mot de passe |
+
+— Utilisateur
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/users/me` | GET | - | Récupère le profil de l'utilisateur |
+| `/v1/users/me` | PUT | `{ displayName, avatarUrl, … }` | Met à jour le profil |
+| `/v1/users/me` | DELETE | - | Supprime le compte |
+
+— Articles et découverte
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/articles` | GET | `page`, `limit`, `sources`, `keywords`, `themes`, `sort` | Liste paginée d'articles |
+| `/v1/articles/{id}` | GET | - | Détail d'un article |
+| `/v1/articles/{id}/similar` | GET | `limit` | Articles similaires |
+| `/v1/articles` | POST | `{ title, excerpt, url, imageUrl, publishedAt, themes, sourceId }` | Ajoute un article sans journal |
+| `/v1/articles/{id}` | PUT | `{ title, excerpt, url, imageUrl, publishedAt, themes, sourceId }` | Met à jour un article |
+| `/v1/articles/{id}` | DELETE | - | Supprime un article |
+
+— Favoris
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/me/favorites` | GET | `page`, `limit` | Liste des favoris de l'utilisateur |
+| `/v1/me/favorites` | POST | `{ articleId }` | Ajoute un favori |
+| `/v1/me/favorites/{articleId}` | DELETE | - | Retire un favori |
+
+— Journaux (collections personnelles)
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/me/journals` | GET | `page`, `limit` | Liste des journaux |
+| `/v1/me/journals` | POST | `{ title, description, visibility? }` | Crée un journal |
+| `/v1/me/journals/{journalId}` | GET | - | Détail d'un journal (propriétaire) |
+| `/v1/me/journals/{journalId}` | PUT | `{ title?, description?, visibility? }` | Met à jour un journal |
+| `/v1/me/journals/{journalId}` | DELETE | - | Supprime un journal |
+| `/v1/journals/{journalId}` | GET | `page`, `limit` | Consulte un journal public |
+| `/v1/me/journals/{journalId}/share` | POST | `{ public: boolean }` | Active/désactive le partage public |
+| `/v1/me/journals/{journalId}/articles` | GET | `page`, `limit` | Liste les articles du journal |
+| `/v1/me/journals/{journalId}/articles` | POST | `{ articleId | title, excerpt, url, imageUrl, publishedAt, themes, sourceId }` | Ajoute un article dans un journal |
+| `/v1/me/journals/{journalId}/articles/{articleId}` | DELETE | - | Retire un article du journal |
+
+— Thèmes, tags et préférences
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/themes` | GET | - | Liste des thèmes |
+| `/v1/me/themes` | GET | - | Récupère les thèmes préférés |
+| `/v1/me/themes` | PUT | `{ themes: string[] }` | Met à jour les thèmes préférés |
+| `/v1/me/themes/blacklist` | GET | - | Récupère les thèmes blacklistés |
+| `/v1/me/themes/blacklist` | PUT | `{ themes: string[] }` | Met à jour la blacklist |
+
+— Sources
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/sources` | GET | `page`, `limit`, `status?` | Liste des sources |
+| `/v1/me/sources` | GET | - | Préférences de sources |
+| `/v1/me/sources` | PUT | `{ sources: string[] }` | Met à jour les sources préférées |
+| `/v1/me/sources/blacklist` | GET | - | Récupère les sources blacklistées |
+| `/v1/me/sources/blacklist` | PUT | `{ sources: string[] }` | Met à jour la blacklist |
+
+— Notifications
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/me/notifications` | GET | - | Récupère les préférences |
+| `/v1/me/notifications` | PUT | `{ channels, topics }` | Met à jour les préférences |
+
+— Recherche
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/search` | GET | `q`, `filters`, `page`, `limit` | Recherche globale |
+
+— Système
+
+| Endpoint | Méthode | Paramètres / Body | Description |
+|----------|--------|------------------|-------------|
+| `/v1/health` | GET | - | Santé du service |
+| `/v1/version` | GET | - | Version de l'API |
 
 #### 3.3.2 Modèle de données simplifié
 - **User**
@@ -274,6 +398,8 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
   - **Clé primaire** : `id`
   - **Clés étrangères** : `notification_pref_id` → `NotificationPreference.id`, `source_id` → `Source.id`
   - **Contraintes** : paire (`notification_pref_id`, `source_id`) unique
+
+- Les champs à valeurs finies (statuts, visibilité, canaux) vont être implémentés via des énumérations.
 
 #### 3.3.3 Collecte / agrégation des flux
 - Module de **polling / scheduler** (ex : cron ou tâche périodique)
@@ -342,32 +468,31 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
 
 ### 5.4 Tests & qualité
 - **pytest** (Python): tests unitaires / intégration.
-- **Supertest / HTTPX / TestClient** : tests d'API.
-- **Cypress / Playwright** : tests end-to-end (E2E).
+- **HTTPX** : tests d'API.
+- **Cypress** : tests end-to-end (E2E).
 - **ESLint + Prettier** : linting/formatage.
 
 ---
 
 ## 6. Architecture & urbanisation
 
-### 6.1 Diagramme d'architecture (haut niveau)  
-> Frontend (application cliente)  
-> ↕ HTTP/HTTPS  
-> Backend (API)  
-> ↕ Base de données + cache  
-> ↕ Module de collecte / agrégation (cron / scheduler)  
-> ↕ Sources externes (flux RSS / APIs)  
+### 6.1 Diagramme d'architecture (haut niveau)
+> Frontend (application cliente)
+> ↕ HTTP/HTTPS
+> Backend (API)
+> ↕ Base de données + cache
+> ↕ Module de collecte / agrégation (cron / scheduler)
+> ↕ Sources externes (flux RSS / APIs)
 
-### 6.2 Flux de données simplifié  
-1. Le module de polling / scheduler interroge périodiquement les flux externes (RSS / API) pour chaque source.  
-2. Il parse les résultats, filtre les doublons, et stocke les nouveaux articles dans la base de données (PostgreSQL).  
-3. Le backend (FastAPI ou autre) expose des endpoints REST conformes à OpenAPI pour :  
-  • récupérer les articles (avec filtres, pagination)  
-  • gérer les favoris  
-  • (optionnel) gérer les utilisateurs / préférences  
-4. Le frontend (React / autre) interroge l'API, affiche les articles, propose les filtres, gère l'interface utilisateur.  
-5. Lorsqu'un utilisateur marque un favori, le frontend envoie la requête POST à l'API, qui stocke la relation dans la base.  
-6. (Optionnel) Le cache (Redis) peut servir à stocker les résultats des flux ou des requêtes fréquentes pour accélérer les réponses ultérieures.
+### 6.2 Flux de données simplifié
+1. Le module de polling / scheduler interroge périodiquement les flux externes (RSS / API) pour chaque source.
+2. Il parse les résultats, filtre les doublons, et stocke les nouveaux articles dans la base de données (PostgreSQL).
+3. Le backend FastAPI expose des endpoints REST pour :
+  • récupérer les articles (avec filtres, pagination)
+  • gérer les favoris
+  • gérer les utilisateurs / préférences
+4. Le frontend React interroge l'API, affiche les articles, propose les filtres, gère l'interface utilisateur.
+5. Lorsqu'un utilisateur marque un favori, le frontend envoie la requête POST à l'API, qui stocke la relation dans la base.
 
 ---
 
@@ -378,33 +503,34 @@ Ce projet est réalisé avec des attentes en termes de rigueur technique (Docker
 | Cadrage & conception | Jour 0 | 1-2 semaines | Cahier des charges validé, wireframes, choix tech |
 | Initialisation / infrastructure | +1-2 sem | 1 semaine | Structure du projet, Docker, dépôt Git, CI de base |
 | Backend de base | +3 sem | 2-3 semaines | Module agrégation, API articles / endpoints de base |
-| Frontend du flux | +5-7 sem | 2-3 semaines | Interface d'accueil, affichage des articles |
-| Recherche / filtres / suggestions | +7-9 sem | 1-2 semaines | Moteur de recherche simple, filtres, recommandations |
-| Favoris / personnalisation | +9-10 sem | 1-2 semaines | Module de favoris, gestion utilisateur (optionnel) |
-| Tests / optimisation | +10-11 sem | 1 semaine | Tests, corrections, optimisation performances |
-| Documentation / benchmark / rapport | +11-12 sem | 1 semaine | Rédaction, comparaison avec Flipboard / concurrents |
-| Préparation soutenance / démonstration | Dernière semaine | 1 semaine | Préparer la présentation, la démonstration |
+| Frontend du flux | +3 sem | 2-3 semaines | Interface d'accueil, affichage des articles |
+| Recherche / filtres / suggestions | +5-6 sem | 1-2 semaines | Moteur de recherche simple, filtres, recommandations |
+| Favoris / personnalisation | +7-8 sem | 1-2 semaines | Module de favoris, gestion utilisateur |
+| Tests / optimisation | +9-10 sem | 1 semaine | Tests, corrections, optimisation performances |
+| Documentation / benchmark / rapport | +10-11 sem | 2 semaine | Rédaction, comparaison avec Flipboard / concurrents |
+
+Le temps supplémentaire disponible peut être utilisé pour ajouter des fonctionnalités annexes, améliorer l'UX/UI, ou approfondir les tests.
 
 ---
 
 ## 8. Critères de validation / recette
 
-- Toutes les fonctionnalités du MVP fonctionnent correctement (flux, filtres, favoris, recherche).  
-- L'interface est responsive, fluide, sans bugs majeurs.  
-- Le backend est stable, les API répondent correctement, la collecte des flux marche en production.  
-- Les tests automatisés passent sans erreur.  
-- Le projet peut être monté et exécuté via Docker / docker-compose.  
-- La documentation (installation, API, manuel utilisateur) est claire et complète.  
-- Le rapport / benchmark est pertinent, la présentation convaincante.  
-- Respect des contraintes de sécurité (ex : les données sensibles sont protégées).  
+- Toutes les fonctionnalités du MVP fonctionnent correctement (flux, filtres, favoris, recherche).
+- L'interface est responsive, fluide, sans bugs majeurs.
+- Le backend est stable, les API répondent correctement, la collecte des flux marche en production.
+- Les tests automatisés passent sans erreur.
+- Le projet peut être monté et exécuté via docker-compose.
+- La documentation (installation, API, manuel utilisateur) est claire et complète.
+- Respect des contraintes de sécurité (ex : les données sensibles sont protégées).
 
 ---
 
-## 9. Annexes & références  
-- Wireframes / maquettes (à produire)  
-- Liste des sources potentielles (RSS / APIs publiques)  
-- Comparatif Flipboard vs concurrents  
-- Glossaire des termes (flux, API, pagination, etc.)  
-- Bibliographie / ressources techniques utilisées  
+## 9. Annexes & références
+- Liste des sources potentielles (RSS / APIs publiques)
+- Glossaire des termes (flux, API, pagination, etc.)
+- Benchmark technique (outils, librairies utilisées)
+- Schéma de la base de données (ERD)
+- Diagrammes d'architecture détaillés
+- Documentation des endpoints API (OpenAPI/Swagger)
 
 ---
