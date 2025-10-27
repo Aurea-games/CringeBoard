@@ -13,8 +13,8 @@ This guide explains how to start the Docker environment (API, Frontend, Postgres
 - `redis` — Redis (cache / queue)
 - `api` — FastAPI backend (Uvicorn)
 - `web` — React frontend (Vite dev server)
-- `scheduler` — Scheduled task (feed aggregation) [profile `worker`]
-- `pgadmin` — Postgres admin UI [profile `devtools`]
+- `scheduler` — Scheduled task (feed aggregation)
+- `pgadmin` — Postgres admin UI
 
 ## 3) Environment Variables
 
@@ -29,7 +29,8 @@ Edit `.env` if needed, then run `docker compose up -d` again.
 
 ## 4) Quick Start
 
-- `docker compose up -d`
+- Production-like stack (immutable containers): `docker compose up -d`
+- Development stack with bind mounts: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
 
 Access:
 
@@ -91,9 +92,10 @@ To start from a "clean slate," add `-v` to `down` (also removes volumes). Warnin
 
 ## 8) Development
 
-- The API is bind‑mounted (`./backend:/app`) with Uvicorn reload.
-- The frontend uses Vite in dev mode and is bind‑mounted (`./frontend:/app`).
-- Edit code locally; containers reflect the changes.
+- Use the additional compose file: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
+- The API mounts the backend sources and runs Uvicorn with `--reload`.
+- The frontend mounts the Vite project and runs the dev server.
+- Edits on the host are available instantly inside the containers.
 
 ## 9) Troubleshooting (FAQ)
 
@@ -113,4 +115,3 @@ To start from a "clean slate," add `-v` to `down` (also removes volumes). Warnin
 ---
 
 Happy programming !
-

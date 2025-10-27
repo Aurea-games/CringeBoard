@@ -1,30 +1,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+
+from app.api import api_router
+from app.core.config import get_settings
 
 
-def get_cors_origins():
-    raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-    return [o.strip() for o in raw.split(",") if o.strip()]
+def create_application() -> FastAPI:
+    settings = get_settings()
+    application = FastAPI(title=settings.project_name)
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_origins),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    application.include_router(api_router)
+
+    return application
 
 
-app = FastAPI(title="CringeBoard API")
+app = create_application()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_cors_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/")
-def root():
-    return {"name": "CringeBoard API", "status": "ok"}
-
-
-@app.get("/healthz")
-def healthz():
-    return {"status": "healthy"}
+__all__ = ["app", "create_application"]
 

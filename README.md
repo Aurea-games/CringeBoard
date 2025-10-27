@@ -4,8 +4,9 @@ CringeBoard is a Flipboard‑like content aggregation app with a FastAPI backend
 
 ## Quick Start
 - Prerequisites: Docker Desktop or Docker Engine + docker compose v2
-- Start base stack: `docker compose up -d`
-- With pgAdmin and worker: `docker compose --profile devtools --profile worker up -d`
+- Production-like stack (build once, immutable containers): `docker compose up -d`
+- Development stack with live reload (bind mounts): `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
+- With pgAdmin and worker in dev: add `--profile devtools --profile worker` to either command
 - Access:
   - Web: http://localhost:3000
   - API: http://localhost:8000/healthz

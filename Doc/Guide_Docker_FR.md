@@ -13,8 +13,8 @@ Ce guide explique comment démarrer l'environnement Docker (API, Frontend, Postg
 - `redis` — Redis (cache / file d'attente)
 - `api` — Backend FastAPI (Uvicorn)
 - `web` — Frontend React (Vite dev server)
-- `scheduler` — Tâche planifiée (agrégation de flux) [profil `worker`]
-- `pgadmin` — UI d'administration Postgres [profil `devtools`]
+- `scheduler` — Tâche planifiée (agrégation de flux)
+- `pgadmin` — UI d'administration Postgres
 
 ## 3) Variables d'environnement
 
@@ -29,7 +29,8 @@ Modifiez `.env` si nécessaire, puis relancez `docker compose up -d`.
 
 ## 4) Démarrage rapide
 
-- `docker compose up -d`
+- Stack proche prod (conteneurs immuables): `docker compose up -d`
+- Stack de développement (montage des sources): `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
 
 Accès:
 
@@ -91,9 +92,10 @@ Pour repartir « propre », ajoutez `-v` à `down` (supprime aussi les volumes).
 
 ## 8) Développement
 
-- L'API est montée en bind (`./backend:/app`) avec reload Uvicorn.
-- Le frontend utilise Vite en mode dev et est monté en bind (`./frontend:/app`).
-- Modifiez le code localement; les conteneurs reflètent les changements.
+- Utilisez le fichier compose additionnel: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
+- L'API monte les sources backend et lance Uvicorn avec `--reload`.
+- Le frontend monte le projet Vite et lance le serveur de dev.
+- Les modifications locales sont visibles immédiatement dans les conteneurs.
 
 ## 9) Dépannage (FAQ)
 
