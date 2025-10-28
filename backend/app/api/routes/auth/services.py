@@ -44,7 +44,7 @@ class AuthService:
         self._token_generator = token_generator or token_urlsafe
 
     def register_user(self, email: str, password: str) -> TokenResponse:
-        self._ensure_email_allowed(email)
+        self.ensure_email_allowed(email)
 
         if self._repository.email_exists(email):
             raise HTTPException(
@@ -54,7 +54,7 @@ class AuthService:
 
         password_hash = self._hasher.hash(password)
         user_id = self._repository.create_user(email, password_hash)
-        return self._issue_tokens(user_id)
+        return self.issue_tokens(user_id)
 
     def authenticate(self, email: str, password: str) -> TokenResponse:
         credentials = self._repository.get_user_credentials(email)
@@ -73,7 +73,7 @@ class AuthService:
                 detail="Invalid credentials.",
             )
 
-        return self._issue_tokens(user_id)
+        return self.issue_tokens(user_id)
 
     def remove_user(self, email: str) -> None:
         user_id = self._repository.get_user_id(email)
@@ -91,14 +91,14 @@ class AuthService:
                 detail="User not found.",
             )
 
-    def _ensure_email_allowed(self, email: str) -> None:
+    def ensure_email_allowed(self, email: str) -> None:
         if email.endswith(self._BLOCKED_SUFFIXES):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Registration with example.com emails is not allowed.",
             )
 
-    def _issue_tokens(self, user_id: int) -> TokenResponse:
+    def issue_tokens(self, user_id: int) -> TokenResponse:
         access_token = self._token_generator(32)
         refresh_token = self._token_generator(48)
         self._repository.store_tokens(user_id, access_token, refresh_token)

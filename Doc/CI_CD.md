@@ -1,51 +1,41 @@
-# CI/CD Overview
+# CI/CD GitHub Actions
 
-CringeBoard is equipped with a GitHub Actions–based CI/CD pipeline that covers backend validation, frontend validation, and automated Docker image publication.
+CringeBoard s’appuie sur une unique pipeline GitHub Actions décrite dans `.github/workflows/ci.yml`. Elle garantit que les deux projets (backend et frontend) restent lintés, formatés et compilables avant intégration.
 
-## Workflows
+## Déclencheurs
+- `push` sur `main`, `develop`, `feature/**`, `bugfix/**`
+- `pull_request` sur n’importe quelle branche
 
-### Backend CI (`.github/workflows/backend-ci.yml`)
-- **Trigger**: pushes and pull requests touching `backend/**`.
-- **Steps**:
-  - Install Python 3.12 with dependency caching.
-  - Install runtime (`requirements.txt`) and tooling (`requirements-dev.txt`) packages.
-  - Run `ruff check app --fix`, re-run `ruff check app`, then `black app` / `black --check app`.
-  - Fail the job if formatting changes are detected (`git diff --exit-code` guard).
-  - Placeholder step for future pytest runs (disabled until tests exist).
+Chaque exécution utilise une stratégie de concurrence (`concurrency`) qui annule la run précédente sur la même ref (`ci-<ref>`), ce qui évite les files d’attente inutiles pendant un rebase ou des pushes successifs.
 
-### Frontend CI (`.github/workflows/frontend-ci.yml`)
-- **Trigger**: pushes and pull requests touching `frontend/**`.
-- **Steps**:
-  - Install Node.js 20 with npm cache.
-  - Run `npm ci`.
-  - Execute `npm run lint:fix`, `npm run lint`, `npm run format`, `npm run format:check`, enforce a clean git diff, and `npm run build`.
+## Jobs
 
-### Docker Images (`.github/workflows/docker-publish.yml`)
-- **Trigger**: pushes to `main`, Git tags matching `v*`, or manual dispatch.
-- **Steps**:
-  - Build the backend (`backend/Dockerfile`) and frontend (`frontend/Dockerfile`) images.
-  - Publish to GHCR as `ghcr.io/<owner>/cringeboard-backend` and `ghcr.io/<owner>/cringeboard-frontend`.
-  - Tag strategy:
-    - `latest` on the default branch.
-    - Branch name tags.
-    - Semantic tags for Git releases (`v*`).
-    - Short SHA tag for traceability.
-  - Layer caching via GitHub Actions cache.
+### `backend` — lint & tests Python
+Localisation : `backend/`
 
-## Required Secrets and Permissions
+1. Checkout du dépôt.
+2. Installation de Python 3.12 avec cache pip (dépendances `requirements.txt` et `requirements-dev.txt`).
+3. Installation des dépendances runtime, tooling et de `pytest`.
+4. Exécution de `ruff check app`.
+5. Vérification de formatage avec `black --check app`.
+6. Lancement de `pytest`. Si aucun test n’est détecté (`exit code 5`), le job continue et n’échoue pas.
 
-| Secret / Permission | Workflow(s) | Purpose |
-| --- | --- | --- |
-| `GITHUB_TOKEN` (default) with `packages: write` | Docker Images | Authenticate to GHCR. |
+### `frontend` — lint & build Node.js
+Localisation : `frontend/`
 
-All workflows rely solely on repository files; no additional secrets are currently required.
+1. Checkout du dépôt.
+2. Installation de Node.js 20 et configuration du cache npm.
+3. `npm ci` pour récupérer les dépendances.
+4. `npm run lint` pour ESLint.
+5. `npm run format:check` pour Prettier.
+6. `npm run build` pour valider la compilation Vite/React.
 
-## Extensibility
+Les deux jobs tournent en parallèle sur `ubuntu-latest`. Aucun secret supplémentaire n’est requis ; `GITHUB_TOKEN` par défaut est suffisant.
 
-- **Backend tests**: enable the pytest step once test suites are in place.
-- **Environment-specific deploys**: add additional jobs depending on the branch (e.g., staging vs prod).
-- **Security scanning**: integrate tools such as Trivy or Dependabot for vulnerability scanning.
+## Bonnes pratiques & évolutions
+- **Tests backend** : enrichir la suite pytest au fur et à mesure pour obtenir une validation plus complète.
+- **Tests frontend** : ajouter des commandes de test (ex. `npm test -- --watch=false`) si une suite Jest/Vitest est disponible.
+- **Analyse de sécurité** : intégrer Trivy, Dependabot ou Snyk pour couvrir les vulnérabilités Docker, pip et npm.
+- **Déploiement continu** : ajouter un job séparé (avec conditions sur la branche) pour construire et publier les images Docker ou déclencher un déploiement.
 
----
-
-For quick reference, see the “Code Quality” and “CI/CD” sections in `README.md`.
+Voir également la section “CI/CD” du `README.md` pour un rappel rapide.
