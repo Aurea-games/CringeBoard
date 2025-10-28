@@ -1,4 +1,5 @@
-from typing import Optional
+
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,12 +11,21 @@ from .validators import normalize_email
 password_hasher = PasswordHasher()
 auth_repository = AuthRepository()
 auth_service = AuthService(auth_repository, password_hasher)
-bearer_scheme = HTTPBearer(auto_error=False)
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def get_current_email(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-) -> str:
+def get_bearer_scheme() -> HTTPBearer:
+    return _bearer_scheme
+
+
+# Backwards-compatible name for external imports
+bearer_scheme = _bearer_scheme
+
+
+CredentialsDep = Annotated[HTTPAuthorizationCredentials | None, Depends(get_bearer_scheme)]
+
+
+def get_current_email(credentials: CredentialsDep) -> str:
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -34,4 +44,4 @@ def get_current_email(
     return normalize_email(email)
 
 
-__all__ = ["auth_service", "bearer_scheme", "get_current_email"]
+__all__ = ["auth_service", "bearer_scheme", "get_bearer_scheme", "get_current_email"]

@@ -1,10 +1,16 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from secrets import token_urlsafe
-from typing import Callable, Optional
+from typing import TYPE_CHECKING
 
 import bcrypt
 from fastapi import HTTPException, status
 
 from .repository import AuthRepository
+
+if TYPE_CHECKING:
+    from .schemas import TokenResponse
 
 
 class PasswordHasher:
@@ -31,13 +37,13 @@ class AuthService:
         self,
         repository: AuthRepository,
         hasher: PasswordHasher,
-        token_generator: Optional[Callable[[int], str]] = None,
+        token_generator: Callable[[int], str] | None = None,
     ) -> None:
         self._repository = repository
         self._hasher = hasher
         self._token_generator = token_generator or token_urlsafe
 
-    def register_user(self, email: str, password: str) -> "TokenResponse":
+    def register_user(self, email: str, password: str) -> TokenResponse:
         self._ensure_email_allowed(email)
 
         if self._repository.email_exists(email):
@@ -50,7 +56,7 @@ class AuthService:
         user_id = self._repository.create_user(email, password_hash)
         return self._issue_tokens(user_id)
 
-    def authenticate(self, email: str, password: str) -> "TokenResponse":
+    def authenticate(self, email: str, password: str) -> TokenResponse:
         credentials = self._repository.get_user_credentials(email)
 
         if not credentials:
@@ -92,7 +98,7 @@ class AuthService:
                 detail="Registration with example.com emails is not allowed.",
             )
 
-    def _issue_tokens(self, user_id: int) -> "TokenResponse":
+    def _issue_tokens(self, user_id: int) -> TokenResponse:
         access_token = self._token_generator(32)
         refresh_token = self._token_generator(48)
         self._repository.store_tokens(user_id, access_token, refresh_token)
