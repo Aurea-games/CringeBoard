@@ -21,7 +21,7 @@ def get_bearer_scheme() -> HTTPBearer:
 bearer_scheme = _bearer_scheme
 
 
-CredentialsDep = Annotated[HTTPAuthorizationCredentials | None, Depends(get_bearer_scheme)]
+CredentialsDep = Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)]
 
 
 def get_current_email(credentials: CredentialsDep) -> str:

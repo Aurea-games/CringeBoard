@@ -4,8 +4,8 @@ set -euo pipefail
 # Always operate from the repository root so compose resolves correctly.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-
-COMPOSE_FILE="docker-compose.dev.yml"
+COMPOSE_FILE="docker-compose.yml"
+COMPOSE_FILE_DEV="docker-compose.dev.yml"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker is not installed or available in PATH." >&2
@@ -21,4 +21,4 @@ else
   exit 1
 fi
 
-"${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" down --rmi local --volumes --remove-orphans
+"${COMPOSE_CMD[@]}" -f "$COMPOSE_FILE" -f "$COMPOSE_FILE_DEV" down --rmi local --volumes --remove-orphans
