@@ -30,11 +30,20 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run ESLint
+      - name: Run ESLint (auto-fix)
+        run: npm run lint:fix
+
+      - name: Run ESLint (verify)
         run: npm run lint
+
+      - name: Run Prettier (auto-fix)
+        run: npm run format
 
       - name: Run Prettier check
         run: npm run format:check
+
+      - name: Ensure frontend has no uncommitted changes
+        run: git diff --exit-code
 
       - name: Build frontend
         run: npm run build

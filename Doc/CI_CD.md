@@ -9,7 +9,8 @@ CringeBoard is equipped with a GitHub Actions–based CI/CD pipeline that covers
 - **Steps**:
   - Install Python 3.12 with dependency caching.
   - Install runtime (`requirements.txt`) and tooling (`requirements-dev.txt`) packages.
-  - Run `ruff check app` and `black --check app`.
+  - Run `ruff check app --fix`, re-run `ruff check app`, then `black app` / `black --check app`.
+  - Fail the job if formatting changes are detected (`git diff --exit-code` guard).
   - Placeholder step for future pytest runs (disabled until tests exist).
 
 ### Frontend CI (`.github/workflows/frontend-ci.yml`)
@@ -17,7 +18,7 @@ CringeBoard is equipped with a GitHub Actions–based CI/CD pipeline that covers
 - **Steps**:
   - Install Node.js 20 with npm cache.
   - Run `npm ci`.
-  - Execute `npm run lint`, `npm run format:check`, and `npm run build`.
+  - Execute `npm run lint:fix`, `npm run lint`, `npm run format`, `npm run format:check`, enforce a clean git diff, and `npm run build`.
 
 ### Docker Images (`.github/workflows/docker-publish.yml`)
 - **Trigger**: pushes to `main`, Git tags matching `v*`, or manual dispatch.
