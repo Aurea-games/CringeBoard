@@ -7,7 +7,7 @@ CringeBoard is equipped with a GitHub Actions–based CI/CD pipeline that covers
 ### Backend CI (`.github/workflows/backend-ci.yml`)
 - **Trigger**: pushes and pull requests touching `backend/**`.
 - **Steps**:
-  - Install Python 3.13 with dependency caching.
+  - Install Python 3.12 with dependency caching.
   - Install runtime (`requirements.txt`) and tooling (`requirements-dev.txt`) packages.
   - Run `ruff check app` and `black --check app`.
   - Placeholder step for future pytest runs (disabled until tests exist).

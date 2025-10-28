@@ -103,7 +103,7 @@ To start from a "clean slate," add `-v` to `down` (also removes volumes). Warnin
 
 **pgAdmin can't see Postgres**: ensure `db` is healthy (`docker compose ps`), then retry. Host must be `db` (not `localhost`).
 
-**psycopg2 / Python 3.13 error**: the project uses `psycopg[binary]` (v3) and `postgresql+psycopg://` in `DATABASE_URL` for compatibility with Python 3.13.
+**psycopg2 build errors**: the project uses `psycopg[binary]` (v3) and `postgresql+psycopg://` in `DATABASE_URL` for compatibility with modern Python versions (3.12+).
 
 **"latest"/"alpine" image changes**: a `build --no-cache` may be required after base‑image updates.
 
