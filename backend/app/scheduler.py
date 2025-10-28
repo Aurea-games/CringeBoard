@@ -2,6 +2,7 @@ import time
 
 from app.core.config import get_settings
 
+
 def main():
     settings = get_settings()
     interval = settings.scheduler_interval

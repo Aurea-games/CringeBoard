@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 from app.core.db import get_connection
 
@@ -27,7 +27,7 @@ class AuthRepository:
             row = cur.fetchone()
             return row[0]
 
-    def get_user_credentials(self, email: str) -> Optional[Tuple[int, str]]:
+    def get_user_credentials(self, email: str) -> tuple[int, str] | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
             row = cur.fetchone()
@@ -35,7 +35,7 @@ class AuthRepository:
                 return None
             return row[0], row[1]
 
-    def get_user_id(self, email: str) -> Optional[int]:
+    def get_user_id(self, email: str) -> int | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("SELECT id FROM users WHERE email = %s", (email,))
             row = cur.fetchone()
@@ -57,7 +57,7 @@ class AuthRepository:
                 (access_token, user_id, refresh_token, user_id),
             )
 
-    def get_email_by_access_token(self, token: str) -> Optional[str]:
+    def get_email_by_access_token(self, token: str) -> str | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """

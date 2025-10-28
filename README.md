@@ -19,6 +19,7 @@ See full Docker guides below for details.
 - Cahier des charges (FR): [Doc/Cahier_des_charges_FR.md](Doc/Cahier_des_charges_FR.md)
 - Docker guide (FR): [Doc/Guide_Docker_FR.md](Doc/Guide_Docker_FR.md)
 - Docker guide (EN): [Doc/Guide_Docker_EN.md](Doc/Guide_Docker_EN.md)
+- CI/CD overview: [Doc/CI_CD.md](Doc/CI_CD.md)
 
 ## Repository Layout
 - Backend (FastAPI): `backend/`
@@ -28,6 +29,16 @@ See full Docker guides below for details.
 ## Environment
 - Configure local settings in `.env` (see `.env.example`).
 - Default credentials are intended for local dev only; change for production.
+
+## Code Quality
+- **Backend (FastAPI)**: `pip install -r backend/requirements-dev.txt` then `ruff check backend/app` / `black backend/app`
+- **Frontend (React + Vite)**: run `npm install` in `frontend/`, then `npm run lint` / `npm run format`
+
+## CI/CD
+- GitHub Actions validate backend and frontend changes and publish Docker images (see [Doc/CI_CD.md](Doc/CI_CD.md)).
+- Backend job: runs Ruff + Black on `backend/app`.
+- Frontend job: runs ESLint + Prettier checks and builds the Vite bundle.
+- Docker job: builds and pushes backend/frontend images to GHCR on `main`, tags `v*`, or manual runs.
 
 ## Notes
 - Images use latest stable bases (alpine/latest); rebuild with `--no-cache` after updates.

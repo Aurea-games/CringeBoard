@@ -3,10 +3,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import List, Tuple
 
 
-def _parse_origins(raw_value: str) -> List[str]:
+def _parse_origins(raw_value: str) -> list[str]:
     """Split a comma-separated list of origins while trimming whitespace."""
     return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
@@ -14,7 +13,7 @@ def _parse_origins(raw_value: str) -> List[str]:
 @dataclass(frozen=True)
 class Settings:
     project_name: str = "CringeBoard API"
-    cors_origins: Tuple[str, ...] = ()
+    cors_origins: tuple[str, ...] = ()
     scheduler_interval: int = 60
 
     def __post_init__(self) -> None:
