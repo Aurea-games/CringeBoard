@@ -11,7 +11,6 @@ class LoginRequest(BaseModel):
     )
     password: str = Field(
         ...,
-        min_length=8,
         description="Account password.",
         examples=["change-me-123"],
     )
@@ -73,4 +72,13 @@ class TokenResponse(BaseModel):
     )
 
 
-__all__ = ["LoginRequest", "RegisterRequest", "TokenResponse"]
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(
+        ...,
+        min_length=1,
+        description="Refresh token obtained during authentication.",
+        examples=["dGhpc19pc19hX3NhbXBsZV9yZWZyZXNoX3Rva2Vu"],
+    )
+
+
+__all__ = ["LoginRequest", "RegisterRequest", "TokenResponse", "RefreshRequest"]

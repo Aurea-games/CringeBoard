@@ -91,6 +91,23 @@ class AuthService:
                 detail="User not found.",
             )
 
+    def refresh_tokens(self, refresh_token: str) -> TokenResponse:
+        normalized_token = refresh_token.strip()
+        if not normalized_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Refresh token must not be empty.",
+            )
+
+        user_id = self._repository.get_user_id_by_refresh_token(normalized_token)
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token.",
+            )
+
+        return self.issue_tokens(user_id)
+
     def ensure_email_allowed(self, email: str) -> None:
         if email.endswith(self._BLOCKED_SUFFIXES):
             raise HTTPException(

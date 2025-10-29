@@ -38,7 +38,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-          python -m pip install pytest
 
       - name: Ruff lint
         run: ruff check app
@@ -47,17 +46,7 @@ jobs:
         run: black --check app
 
       - name: Backend tests
-        run: |
-          set +e
-          pytest
-          EXIT_CODE=$?
-          set -e
-
-          if [ "$EXIT_CODE" -eq 5 ]; then
-            echo "Pytest reported no tests; continuing."
-          elif [ "$EXIT_CODE" -ne 0 ]; then
-            exit "$EXIT_CODE"
-          fi
+        run: pytest tests
 
   frontend:
     name: Frontend lint & build
