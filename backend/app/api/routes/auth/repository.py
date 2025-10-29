@@ -71,6 +71,19 @@ class AuthRepository:
             row = cur.fetchone()
             return row[0] if row else None
 
+    def get_user_id_by_refresh_token(self, token: str) -> int | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT t.user_id
+                FROM tokens AS t
+                WHERE t.token = %s AND t.token_type = 'refresh'
+                """,
+                (token,),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+
     def delete_tokens_for_user(self, user_id: int) -> None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM tokens WHERE user_id = %s", (user_id,))
