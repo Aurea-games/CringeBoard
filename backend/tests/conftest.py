@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from pathlib import Path
+import sys
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from app.api.routes.auth.schemas import TokenResponse
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+if TYPE_CHECKING:
+    from app.api.routes.auth.schemas import TokenResponse
 
 
 class SimplePasswordHasher:
@@ -110,7 +118,7 @@ class FakeAuthService:
         self._hasher = hasher
         self._token_generator = token_generator
 
-    def register_user(self, email: str, password: str) -> TokenResponse:
+    def register_user(self, email: str, password: str) -> "TokenResponse":
         self.ensure_email_allowed(email)
         if self._repository.email_exists(email):
             raise HTTPException(
@@ -121,7 +129,7 @@ class FakeAuthService:
         user_id = self._repository.create_user(email, password_hash)
         return self.issue_tokens(user_id)
 
-    def authenticate(self, email: str, password: str) -> TokenResponse:
+    def authenticate(self, email: str, password: str) -> "TokenResponse":
         credentials = self._repository.get_user_credentials(email)
         if not credentials:
             raise HTTPException(
@@ -151,7 +159,7 @@ class FakeAuthService:
                 detail="User not found.",
             )
 
-    def refresh_tokens(self, refresh_token: str) -> TokenResponse:
+    def refresh_tokens(self, refresh_token: str) -> "TokenResponse":
         normalized_token = refresh_token.strip()
         if not normalized_token:
             raise HTTPException(
@@ -173,7 +181,9 @@ class FakeAuthService:
                 detail="Registration with example.com emails is not allowed.",
             )
 
-    def issue_tokens(self, user_id: int) -> TokenResponse:
+    def issue_tokens(self, user_id: int) -> "TokenResponse":
+        from app.api.routes.auth.schemas import TokenResponse
+
         access_token = self._token_generator(32)
         refresh_token = self._token_generator(48)
         self._repository.store_tokens(user_id, access_token, refresh_token)
