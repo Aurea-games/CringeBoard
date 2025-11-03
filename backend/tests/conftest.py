@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from typing import TYPE_CHECKING
@@ -32,6 +33,142 @@ class DeterministicTokenGenerator:
     def __call__(self, _: int) -> str:
         self._counter += 1
         return f"token-{self._counter}"
+
+
+class InMemoryAggregatorRepository:
+    def __init__(self) -> None:
+        self._next_newspaper_id = 1
+        self._next_article_id = 1
+        self._newspapers: dict[int, dict[str, object]] = {}
+        self._articles: dict[int, dict[str, object]] = {}
+
+    def _now(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+    def create_newspaper(self, owner_id: int, title: str, description: str | None) -> dict[str, object]:
+        newspaper_id = self._next_newspaper_id
+        self._next_newspaper_id += 1
+        timestamp = self._now()
+        record = {
+            "id": newspaper_id,
+            "title": title,
+            "description": description,
+            "owner_id": owner_id,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        self._newspapers[newspaper_id] = record
+        return record.copy()
+
+    def _clone_article(self, record: dict[str, object]) -> dict[str, object]:
+        clone = record.copy()
+        clone["newspaper_ids"] = sorted(record.get("newspaper_ids", set()))
+        return clone
+
+    def list_newspapers(self) -> list[dict[str, object]]:
+        newspapers = sorted(
+            self._newspapers.values(),
+            key=lambda item: item["created_at"],
+            reverse=True,
+        )
+        return [record.copy() for record in newspapers]
+
+    def get_newspaper(self, newspaper_id: int) -> dict[str, object] | None:
+        record = self._newspapers.get(newspaper_id)
+        return record.copy() if record else None
+
+    def update_newspaper(
+        self,
+        newspaper_id: int,
+        title: str | None,
+        description: str | None,
+    ) -> dict[str, object] | None:
+        record = self._newspapers.get(newspaper_id)
+        if record is None:
+            return None
+        if title is not None:
+            record["title"] = title
+        if description is not None:
+            record["description"] = description
+        record["updated_at"] = self._now()
+        return record.copy()
+
+    def delete_newspaper(self, newspaper_id: int) -> bool:
+        removed = self._newspapers.pop(newspaper_id, None)
+        if removed is None:
+            return False
+        for article in self._articles.values():
+            ids = article.setdefault("newspaper_ids", set())
+            if newspaper_id in ids:
+                ids.discard(newspaper_id)
+        return True
+
+    def list_articles_for_newspaper(self, newspaper_id: int) -> list[dict[str, object]]:
+        articles = [
+            article
+            for article in self._articles.values()
+            if newspaper_id in article["newspaper_ids"]
+        ]
+        articles.sort(key=lambda item: item["created_at"], reverse=True)
+        return [self._clone_article(article) for article in articles]
+
+    def create_article(
+        self,
+        owner_id: int,
+        newspaper_id: int,
+        title: str,
+        content: str | None,
+        url: str | None,
+    ) -> dict[str, object]:
+        article_id = self._next_article_id
+        self._next_article_id += 1
+        timestamp = self._now()
+        record = {
+            "id": article_id,
+            "title": title,
+            "content": content,
+            "url": url,
+            "owner_id": owner_id,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "newspaper_ids": {newspaper_id},
+        }
+        self._articles[article_id] = record
+        return self._clone_article(record)
+
+    def get_article(self, article_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        return self._clone_article(record) if record else None
+
+    def update_article(
+        self,
+        article_id: int,
+        title: str | None,
+        content: str | None,
+        url: str | None,
+    ) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        if title is not None:
+            record["title"] = title
+        if content is not None:
+            record["content"] = content
+        if url is not None:
+            record["url"] = url
+        record["updated_at"] = self._now()
+        return self._clone_article(record)
+
+    def assign_article_to_newspaper(self, article_id: int, newspaper_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        record.setdefault("newspaper_ids", set()).add(newspaper_id)
+        record["updated_at"] = self._now()
+        return self._clone_article(record)
+
+    def delete_article(self, article_id: int) -> bool:
+        return self._articles.pop(article_id, None) is not None
 
 
 class InMemoryAuthRepository:
@@ -233,6 +370,8 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     monkeypatch.setattr(psycopg, "connect", fake_connect)
 
     from app.api.routes.auth import delete, dependencies, login, refresh, register
+    from app.api.routes.aggregator import dependencies as aggregator_dependencies
+    from app.api.routes.aggregator.services import AggregatorService
     from app.main import create_application
 
     repository = InMemoryAuthRepository()
@@ -246,6 +385,11 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     monkeypatch.setattr(register, "auth_service", auth_service)
     monkeypatch.setattr(refresh, "auth_service", auth_service)
     monkeypatch.setattr(delete, "auth_service", auth_service)
+
+    aggregator_repository = InMemoryAggregatorRepository()
+    aggregator_service = AggregatorService(aggregator_repository, repository)
+    monkeypatch.setattr(aggregator_dependencies, "aggregator_repository", aggregator_repository)
+    monkeypatch.setattr(aggregator_dependencies, "aggregator_service", aggregator_service)
 
     app = create_application()
     with TestClient(app) as client:
