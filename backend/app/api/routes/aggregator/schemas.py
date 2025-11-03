@@ -56,7 +56,7 @@ class NewspaperDetail(Newspaper):
     articles: list[Article] = Field(default_factory=list)
 
     @classmethod
-    def from_parts(cls, newspaper_data: dict[str, Any], articles: list[dict[str, Any]]) -> "NewspaperDetail":
+    def from_parts(cls, newspaper_data: dict[str, Any], articles: list[dict[str, Any]]) -> NewspaperDetail:
         base = Newspaper.model_validate(newspaper_data)
         article_models = [Article.model_validate(article) for article in articles]
         return cls(**base.model_dump(), articles=article_models)
