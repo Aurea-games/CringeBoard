@@ -68,15 +68,36 @@ class AggregatorRepository:
         return newspaper
 
     def list_newspapers(self) -> list[NewspaperRow]:
+        return self.search_newspapers()
+
+    def search_newspapers(self, search: str | None = None, owner_id: int | None = None) -> list[NewspaperRow]:
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if owner_id is not None:
+            clauses.append("owner_id = %s")
+            params.append(owner_id)
+
+        pattern: str | None = None
+        if search:
+            trimmed = search.strip()
+            if trimmed:
+                pattern = f"%{trimmed}%"
+                clauses.append("(title ILIKE %s OR description ILIKE %s)")
+                params.extend([pattern, pattern])
+
+        sql = [
+            "SELECT id, title, description, owner_id, created_at, updated_at",
+            "FROM newspapers",
+        ]
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+        sql.append("ORDER BY created_at DESC")
+
         with self._connection_factory() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, title, description, owner_id, created_at, updated_at
-                FROM newspapers
-                ORDER BY created_at DESC
-                """
-            )
+            cur.execute("\n".join(sql), tuple(params))
             rows = cur.fetchall()
+
         result: list[NewspaperRow] = []
         for row in rows:
             newspaper = self.row_to_newspaper(row)
@@ -151,34 +172,70 @@ class AggregatorRepository:
             return cur.rowcount > 0
 
     def list_articles_for_newspaper(self, newspaper_id: int) -> list[ArticleRow]:
-        with self._connection_factory() as conn, conn.cursor() as cur:
-            cur.execute(
+        return self.search_articles(newspaper_id=newspaper_id)
+
+    def search_articles(
+        self,
+        search: str | None = None,
+        owner_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> list[ArticleRow]:
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if newspaper_id is not None:
+            clauses.append(
                 """
-                SELECT
-                    a.id,
-                    a.title,
-                    a.content,
-                    a.url,
-                    a.owner_id,
-                    a.created_at,
-                    a.updated_at,
-                    COALESCE(
-                        ARRAY(
-                            SELECT na2.newspaper_id
-                            FROM newspaper_articles AS na2
-                            WHERE na2.article_id = a.id
-                            ORDER BY na2.newspaper_id
-                        ),
-                        ARRAY[]::INTEGER[]
-                    ) AS newspaper_ids
-                FROM articles AS a
-                JOIN newspaper_articles AS na ON na.article_id = a.id
-                WHERE na.newspaper_id = %s
-                ORDER BY a.created_at DESC
-                """,
-                (newspaper_id,),
+                EXISTS (
+                    SELECT 1
+                    FROM newspaper_articles AS na
+                    WHERE na.article_id = a.id AND na.newspaper_id = %s
+                )
+                """.strip()
             )
+            params.append(newspaper_id)
+
+        if owner_id is not None:
+            clauses.append("a.owner_id = %s")
+            params.append(owner_id)
+
+        if search:
+            trimmed = search.strip()
+            if trimmed:
+                pattern = f"%{trimmed}%"
+                clauses.append("(a.title ILIKE %s OR a.content ILIKE %s)")
+                params.extend([pattern, pattern])
+
+        sql = [
+            """
+            SELECT
+                a.id,
+                a.title,
+                a.content,
+                a.url,
+                a.owner_id,
+                a.created_at,
+                a.updated_at,
+                COALESCE(
+                    ARRAY(
+                        SELECT na2.newspaper_id
+                        FROM newspaper_articles AS na2
+                        WHERE na2.article_id = a.id
+                        ORDER BY na2.newspaper_id
+                    ),
+                    ARRAY[]::INTEGER[]
+                ) AS newspaper_ids
+            FROM articles AS a
+            """
+        ]
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+        sql.append("ORDER BY a.created_at DESC")
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
             rows = cur.fetchall()
+
         result: list[ArticleRow] = []
         for row in rows:
             article = self.row_to_article(row)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.routes.auth import dependencies as auth_dependencies
 
@@ -12,6 +12,22 @@ from . import schemas
 router = APIRouter(prefix="/v1/articles", tags=["articles"])
 
 CurrentUserEmail = Annotated[str, Depends(auth_dependencies.get_current_email)]
+
+
+@router.get(
+    "/",
+    response_model=list[schemas.Article],
+)
+def search_articles(
+    search: str | None = Query(default=None, alias="q"),
+    owner_email: str | None = Query(default=None),
+    newspaper_id: int | None = Query(default=None),
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.search_articles(
+        search=search,
+        owner_email=owner_email,
+        newspaper_id=newspaper_id,
+    )
 
 
 @router.get(
