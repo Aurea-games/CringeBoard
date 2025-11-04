@@ -1,0 +1,220 @@
+{
+	"info": {
+		"_postman_id": "625a4c63-26ea-42d7-bed9-57dfed2ffd63",
+		"name": "Articles",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "20900573"
+	},
+	"item": [
+		{
+			"name": "List",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/newspapers/{{NEWSPAPER_ID}}/articles",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"newspapers",
+						"{{NEWSPAPER_ID}}",
+						"articles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Extract `id` from JSON response and save to environment as ARTICLE_ID",
+							"pm.test(\"Store ARTICLE_ID from POST response\", function () {",
+							"    pm.response.to.have.status(201);",
+							"    pm.response.to.have.header(\"Content-Type\");",
+							"",
+							"    let json;",
+							"    try {",
+							"        json = pm.response.json();",
+							"    } catch (e) {",
+							"        pm.expect.fail(\"Response is not valid JSON\");",
+							"    }",
+							"",
+							"    pm.expect(json).to.be.an(\"object\");",
+							"    pm.expect(json).to.have.property(\"id\");",
+							"",
+							"    const articleId = json.id;",
+							"    pm.expect(articleId, \"id should be a number or string\").to.satisfy(v => typeof v === 'number' || typeof v === 'string');",
+							"",
+							"    // Set in active environment",
+							"    pm.environment.set(\"ARTICLE_ID\", String(articleId));",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"title\": \"Launch Event\",\"content\": \"Coverage of the launch.\",\"url\": \"https://example.org/articles/launch\"}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/newspapers/{{NEWSPAPER_ID}}/articles",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"newspapers",
+						"{{NEWSPAPER_ID}}",
+						"articles"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Details",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/articles/{{ARTICLE_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"articles",
+						"{{ARTICLE_ID}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"title\": \"Launch Event – Updated\",\"content\": \"Updated coverage.\",\"url\": \"https://example.org/articles/launch-update\"}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/articles/{{ARTICLE_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"articles",
+						"{{ARTICLE_ID}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/articles/{{ARTICLE_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"articles",
+						"{{ARTICLE_ID}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Attach to newspaper",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"title\": \"Tech Daily\",\"description\": \"All about technology.\"}"
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/newspapers/1/articles/{{ARTICLE_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"newspapers",
+						"1",
+						"articles",
+						"{{ARTICLE_ID}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
