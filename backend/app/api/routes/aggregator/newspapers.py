@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.routes.auth import dependencies as auth_dependencies
 
@@ -16,8 +16,11 @@ CurrentUserEmail = Annotated[str, Depends(auth_dependencies.get_current_email)]
 
 
 @router.get("/", response_model=list[schemas.Newspaper])
-def list_newspapers() -> list[schemas.Newspaper]:
-    return aggregator_dependencies.aggregator_service.list_newspapers()
+def list_newspapers(
+    search: str | None = Query(default=None, alias="q"),
+    owner_email: str | None = Query(default=None),
+) -> list[schemas.Newspaper]:
+    return aggregator_dependencies.aggregator_service.list_newspapers(search, owner_email)
 
 
 @router.post(
@@ -68,8 +71,11 @@ def delete_newspaper(
     "/{newspaper_id}/articles",
     response_model=list[schemas.Article],
 )
-def list_articles(newspaper_id: int) -> list[schemas.Article]:
-    return aggregator_dependencies.aggregator_service.list_articles_for_newspaper(newspaper_id)
+def list_articles(
+    newspaper_id: int,
+    search: str | None = Query(default=None, alias="q"),
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_articles_for_newspaper(newspaper_id, search)
 
 
 @router.post(

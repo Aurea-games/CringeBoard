@@ -134,3 +134,38 @@ def test_get_newspaper_returns_articles(auth_test_client: TestClient) -> None:
     assert len(detail["articles"]) == 1
     assert detail["articles"][0]["title"] == "New Discovery"
     assert detail["articles"][0]["newspaper_ids"] == [newspaper_id]
+
+    filtered = auth_test_client.get(f"{NEWSPAPERS_URL}/{newspaper_id}/articles", params={"q": "Discovery"})
+    assert filtered.status_code == 200
+    assert len(filtered.json()) == 1
+
+
+def test_search_newspapers_supports_query_and_owner_filter(auth_test_client: TestClient) -> None:
+    owner_tokens = register_user(auth_test_client, "publisher@example.org")
+    other_tokens = register_user(auth_test_client, "another@example.org")
+
+    auth_test_client.post(
+        NEWSPAPERS_URL,
+        json={"title": "Tech Daily", "description": "Tech news"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    auth_test_client.post(
+        NEWSPAPERS_URL,
+        json={"title": "Cooking Weekly", "description": "Recipes"},
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+    auth_test_client.post(
+        NEWSPAPERS_URL,
+        json={"title": "Travel Digest", "description": "Trips"},
+        headers=auth_headers(other_tokens["access_token"]),
+    )
+
+    search_response = auth_test_client.get(NEWSPAPERS_URL, params={"q": "Tech"})
+    assert search_response.status_code == 200
+    titles = [paper["title"] for paper in search_response.json()]
+    assert titles == ["Tech Daily"]
+
+    owner_response = auth_test_client.get(NEWSPAPERS_URL, params={"owner_email": "publisher@example.org"})
+    assert owner_response.status_code == 200
+    owner_titles = {paper["title"] for paper in owner_response.json()}
+    assert owner_titles == {"Tech Daily", "Cooking Weekly"}

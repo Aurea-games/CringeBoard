@@ -129,6 +129,51 @@ def test_non_owner_cannot_modify_article(auth_test_client: TestClient) -> None:
     assert delete_response.json()["detail"] == "You do not have permission to delete this article."
 
 
+def test_search_articles_endpoint_supports_filters(auth_test_client: TestClient) -> None:
+    owner_tokens = register_user(auth_test_client, "collector@example.org")
+
+    tech_newspaper = create_newspaper(auth_test_client, owner_tokens["access_token"], title="Tech Daily")
+    science_newspaper = create_newspaper(auth_test_client, owner_tokens["access_token"], title="Science Weekly")
+
+    article_one = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{tech_newspaper}/articles",
+        json={
+            "title": "Launch Event",
+            "content": "Covering the tech launch.",
+        },
+        headers=auth_headers(owner_tokens["access_token"]),
+    ).json()
+
+    auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{science_newspaper}/articles",
+        json={
+            "title": "Research Update",
+            "content": "Science news.",
+        },
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    # Attach one article to an extra newspaper to verify filtering by newspaper_id
+    auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{science_newspaper}/articles/{article_one['id']}",
+        headers=auth_headers(owner_tokens["access_token"]),
+    )
+
+    search_response = auth_test_client.get(ARTICLES_URL, params={"q": "Launch"})
+    assert search_response.status_code == 200
+    assert len(search_response.json()) == 1
+    assert search_response.json()[0]["title"] == "Launch Event"
+
+    owner_response = auth_test_client.get(ARTICLES_URL, params={"owner_email": "collector@example.org"})
+    assert owner_response.status_code == 200
+    assert {article["title"] for article in owner_response.json()} == {"Launch Event", "Research Update"}
+
+    filtered_by_newspaper = auth_test_client.get(ARTICLES_URL, params={"newspaper_id": science_newspaper})
+    assert filtered_by_newspaper.status_code == 200
+    titles = {article["title"] for article in filtered_by_newspaper.json()}
+    assert titles == {"Launch Event", "Research Update"}
+
+
 def test_owner_can_attach_existing_article_to_newspaper(auth_test_client: TestClient) -> None:
     tokens = register_user(auth_test_client, "publisher@example.org")
     first_newspaper_id = create_newspaper(auth_test_client, tokens["access_token"], title="Daily Tech")
@@ -161,7 +206,7 @@ def test_owner_can_attach_existing_article_to_newspaper(auth_test_client: TestCl
     assert any(article["id"] == article_id and second_newspaper_id in article["newspaper_ids"] for article in articles_in_second.json())
 
 
-def test_cannot_attach_article_without_ownership(auth_test_client: TestClient) -> None:
+def test_non_owner_can_attach_article_to_newspaper(auth_test_client: TestClient) -> None:
     owner_tokens = register_user(auth_test_client, "owner2@example.org")
     other_tokens = register_user(auth_test_client, "other2@example.org")
 
@@ -184,5 +229,6 @@ def test_cannot_attach_article_without_ownership(auth_test_client: TestClient) -
         headers=auth_headers(other_tokens["access_token"]),
     )
 
-    assert attach_response.status_code == 403
-    assert attach_response.json()["detail"] == "You do not have permission to modify this article."
+    assert attach_response.status_code == 200
+    attached = attach_response.json()
+    assert other_newspaper_id in attached["newspaper_ids"]

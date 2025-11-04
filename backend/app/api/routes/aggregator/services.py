@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException, status
 
 from app.api.routes.auth.repository import AuthRepository
+from app.api.routes.auth.validators import normalize_email
 
 from . import schemas
 from .repository import AggregatorRepository
@@ -24,8 +25,15 @@ class AggregatorService:
         self._repository = repository
         self._auth_repository = auth_repository
 
-    def list_newspapers(self) -> list[schemas.Newspaper]:
-        rows = self._repository.list_newspapers()
+    def list_newspapers(self, search: str | None = None, owner_email: str | None = None) -> list[schemas.Newspaper]:
+        owner_id: int | None = None
+        if owner_email:
+            normalized = normalize_email(owner_email)
+            owner_id = self._auth_repository.get_user_id(normalized)
+            if owner_id is None:
+                return []
+
+        rows = self._repository.search_newspapers(search, owner_id)
         return [schemas.Newspaper.model_validate(row) for row in rows]
 
     def create_newspaper(self, owner_email: str, payload: schemas.NewspaperCreate) -> schemas.Newspaper:
@@ -46,7 +54,7 @@ class AggregatorService:
         record = self._repository.get_newspaper(newspaper_id)
         if record is None:
             raise self._NEWSPAPER_NOT_FOUND
-        articles = self._repository.list_articles_for_newspaper(newspaper_id)
+        articles = self._repository.search_articles(newspaper_id=newspaper_id)
         return schemas.NewspaperDetail.from_parts(record, articles)
 
     def update_newspaper(
@@ -96,11 +104,27 @@ class AggregatorService:
         if not self._repository.delete_newspaper(newspaper_id):
             raise self._NEWSPAPER_NOT_FOUND
 
-    def list_articles_for_newspaper(self, newspaper_id: int) -> list[schemas.Article]:
+    def list_articles_for_newspaper(self, newspaper_id: int, search: str | None = None) -> list[schemas.Article]:
         # Raises if the newspaper does not exist to ensure clients receive a 404.
         if self._repository.get_newspaper(newspaper_id) is None:
             raise self._NEWSPAPER_NOT_FOUND
-        rows = self._repository.list_articles_for_newspaper(newspaper_id)
+        rows = self._repository.search_articles(search=search, newspaper_id=newspaper_id)
+        return [schemas.Article.model_validate(row) for row in rows]
+
+    def search_articles(
+        self,
+        search: str | None = None,
+        owner_email: str | None = None,
+        newspaper_id: int | None = None,
+    ) -> list[schemas.Article]:
+        owner_id: int | None = None
+        if owner_email:
+            normalized = normalize_email(owner_email)
+            owner_id = self._auth_repository.get_user_id(normalized)
+            if owner_id is None:
+                return []
+
+        rows = self._repository.search_articles(search=search, owner_id=owner_id, newspaper_id=newspaper_id)
         return [schemas.Article.model_validate(row) for row in rows]
 
     def create_article(
@@ -151,7 +175,6 @@ class AggregatorService:
         article = self._repository.get_article(article_id)
         if article is None:
             raise self._ARTICLE_NOT_FOUND
-        self.ensure_ownership(article["owner_id"], owner_id, "modify this article")
 
         record = self._repository.assign_article_to_newspaper(article_id, newspaper_id)
         if record is None:

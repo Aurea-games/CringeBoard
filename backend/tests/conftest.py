@@ -66,12 +66,30 @@ class InMemoryAggregatorRepository:
         return clone
 
     def list_newspapers(self) -> list[dict[str, object]]:
-        newspapers = sorted(
-            self._newspapers.values(),
-            key=lambda item: item["created_at"],
-            reverse=True,
-        )
-        return [record.copy() for record in newspapers]
+        return self.search_newspapers()
+
+    def search_newspapers(
+        self,
+        search: str | None = None,
+        owner_id: int | None = None,
+    ) -> list[dict[str, object]]:
+        results = list(self._newspapers.values())
+        if owner_id is not None:
+            results = [record for record in results if record["owner_id"] == owner_id]
+        if search:
+            needle = search.strip().lower()
+            if needle:
+                filtered: list[dict[str, object]] = []
+                for record in results:
+                    title_match = needle in record["title"].lower()
+                    description = record.get("description")
+                    description_match = isinstance(description, str) and needle in description.lower()
+                    if title_match or description_match:
+                        filtered.append(record)
+                results = filtered
+
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return [record.copy() for record in results]
 
     def find_newspaper_by_title(self, owner_id: int, title: str) -> dict[str, object] | None:
         for record in self._newspapers.values():
@@ -110,11 +128,31 @@ class InMemoryAggregatorRepository:
         return True
 
     def list_articles_for_newspaper(self, newspaper_id: int) -> list[dict[str, object]]:
-        articles = [
-            article
-            for article in self._articles.values()
-            if newspaper_id in article["newspaper_ids"]
-        ]
+        return self.search_articles(newspaper_id=newspaper_id)
+
+    def search_articles(
+        self,
+        search: str | None = None,
+        owner_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> list[dict[str, object]]:
+        articles = list(self._articles.values())
+        if owner_id is not None:
+            articles = [article for article in articles if article["owner_id"] == owner_id]
+        if newspaper_id is not None:
+            articles = [article for article in articles if newspaper_id in article.get("newspaper_ids", set())]
+        if search:
+            needle = search.strip().lower()
+            if needle:
+                filtered_articles: list[dict[str, object]] = []
+                for article in articles:
+                    title_match = needle in article["title"].lower()
+                    content = article.get("content")
+                    content_match = isinstance(content, str) and needle in content.lower()
+                    if title_match or content_match:
+                        filtered_articles.append(article)
+                articles = filtered_articles
+
         articles.sort(key=lambda item: item["created_at"], reverse=True)
         return [self._clone_article(article) for article in articles]
 
