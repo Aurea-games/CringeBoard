@@ -8,10 +8,15 @@ class FlipboardMagazineScraper(BaseRSSScraper):
 
     def __init__(
         self,
-        magazine_identifier: str,
-        session=None,
+        a_magazine_identifier: str,
+        a_session=None,
     ) -> None:
-        feed_url = f"https://flipboard.com/@{magazine_identifier}.rss"
-        title = f"Flipboard / @{magazine_identifier}"
-        description = f"Flipboard magazine feed for @{magazine_identifier}"
-        super().__init__(feed_url, title, description, session=session)
+        feed_url = f"https://flipboard.com/@{a_magazine_identifier}.rss"
+        title = f"Flipboard / @{a_magazine_identifier}"
+        description = f"Flipboard magazine feed for @{a_magazine_identifier}"
+        super().__init__(
+            a_feed_url=feed_url,
+            a_newspaper_title=title,
+            a_newspaper_description=description,
+            a_session=a_session,
+        )

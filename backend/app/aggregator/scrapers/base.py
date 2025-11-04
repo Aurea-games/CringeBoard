@@ -13,15 +13,15 @@ class BaseRSSScraper:
 
     def __init__(
         self,
-        feed_url: str,
-        newspaper_title: str,
-        newspaper_description: str | None = None,
-        session: requests.Session | None = None,
+        a_feed_url: str,
+        a_newspaper_title: str,
+        a_newspaper_description: str | None = None,
+        a_session: requests.Session | None = None,
     ) -> None:
-        self._feed_url = feed_url
-        self._newspaper_title = newspaper_title
-        self._newspaper_description = newspaper_description
-        self._session = session or requests.Session()
+        self._feed_url = a_feed_url
+        self._newspaper_title = a_newspaper_title
+        self._newspaper_description = a_newspaper_description
+        self._session = a_session or requests.Session()
 
     @property
     def newspaper_title(self) -> str:
@@ -37,8 +37,8 @@ class BaseRSSScraper:
         raw_text = response.text
         return self.parse_feed(raw_text)
 
-    def parse_feed(self, data: str) -> Iterable[ScrapedArticle]:
-        root = ET.fromstring(data)
+    def parse_feed(self, a_data: str) -> Iterable[ScrapedArticle]:
+        root = ET.fromstring(a_data)
         channel = root.find("channel")
         items = channel.findall("item") if channel is not None else root.findall(".//item")
         for item in items:
@@ -54,21 +54,21 @@ class BaseRSSScraper:
             )
 
     @staticmethod
-    def get_text(item: ET.Element, tag: str) -> str | None:
-        element = item.find(tag)
+    def get_text(a_item: ET.Element, a_tag: str) -> str | None:
+        element = a_item.find(a_tag)
         if element is None or element.text is None:
             return None
         return element.text
 
     @staticmethod
-    def clean_html(raw: str) -> str:
+    def clean_html(a_raw: str) -> str:
         try:
             from html import unescape
             from re import sub
         except ImportError:
-            return raw
+            return a_raw
 
-        text = unescape(raw)
+        text = unescape(a_raw)
         text = sub(r"<br\\s*/?>", "\n", text)
         text = sub(r"</p>\s*<p>", "\n", text)
         text = sub(r"<[^>]+>", "", text)

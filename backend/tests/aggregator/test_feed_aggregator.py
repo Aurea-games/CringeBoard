@@ -104,10 +104,10 @@ def test_feed_aggregator_persists_articles(monkeypatch: pytest.MonkeyPatch) -> N
     )
 
     aggregator = FeedAggregator(
-        repository=aggregator_repository,
-        auth_repository=auth_repository,
-        password_hasher=password_hasher,
-        scrapers=[scraper_one, scraper_two],
+        a_repository=aggregator_repository,
+        a_auth_repository=auth_repository,
+        a_password_hasher=password_hasher,
+        a_scrapers=[scraper_one, scraper_two],
     )
 
     aggregator.run()

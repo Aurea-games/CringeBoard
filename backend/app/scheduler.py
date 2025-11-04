@@ -10,9 +10,9 @@ from app.api.routes.auth.services import PasswordHasher
 from app.core.config import Settings, get_settings
 
 
-def build_scrapers(settings: Settings):
+def build_scrapers(a_settings: Settings):
     scrapers = []
-    for feed in settings.rss_feeds:
+    for feed in a_settings.rss_feeds:
         parts = [part.strip() for part in feed.split("|") if part.strip()]
         if not parts:
             continue
@@ -27,13 +27,13 @@ def build_scrapers(settings: Settings):
             title, url, description = parts[0], parts[1], parts[2]
         scrapers.append(
             BaseRSSScraper(
-                feed_url=url,
-                newspaper_title=title,
-                newspaper_description=description,
+                a_feed_url=url,
+                a_newspaper_title=title,
+                a_newspaper_description=description,
             )
         )
 
-    for magazine in settings.flipboard_magazines:
+    for magazine in a_settings.flipboard_magazines:
         if not magazine:
             continue
         scrapers.append(FlipboardMagazineScraper(magazine))
@@ -44,10 +44,10 @@ def main() -> None:
     settings = get_settings()
     scrapers = build_scrapers(settings)
     aggregator = FeedAggregator(
-        repository=AggregatorRepository(),
-        auth_repository=AuthRepository(),
-        password_hasher=PasswordHasher(),
-        scrapers=scrapers,
+        a_repository=AggregatorRepository(),
+        a_auth_repository=AuthRepository(),
+        a_password_hasher=PasswordHasher(),
+        a_scrapers=scrapers,
     )
 
     interval = settings.scheduler_interval

@@ -34,15 +34,15 @@ class FeedAggregator:
 
     def __init__(
         self,
-        repository: AggregatorRepository,
-        auth_repository: AuthRepository,
-        password_hasher: PasswordHasher,
-        scrapers: Iterable[FeedScraper],
+        a_repository: AggregatorRepository,
+        a_auth_repository: AuthRepository,
+        a_password_hasher: PasswordHasher,
+        a_scrapers: Iterable[FeedScraper],
     ) -> None:
-        self._repository = repository
-        self._auth_repository = auth_repository
-        self._password_hasher = password_hasher
-        self._scrapers = list(scrapers)
+        self._repository = a_repository
+        self._auth_repository = a_auth_repository
+        self._password_hasher = a_password_hasher
+        self._scrapers = list(a_scrapers)
         self._settings = get_settings()
 
     def run(self) -> None:
@@ -72,12 +72,12 @@ class FeedAggregator:
         password_hash = self._password_hasher.hash(self._settings.aggregator_user_password)
         return self._auth_repository.create_user(email, password_hash)
 
-    def ensure_newspaper(self, owner_id: int, scraper: FeedScraper) -> dict[str, object]:
-        existing = self._repository.find_newspaper_by_title(owner_id, scraper.newspaper_title)
+    def ensure_newspaper(self, a_owner_id: int, a_scraper: FeedScraper) -> dict[str, object]:
+        existing = self._repository.find_newspaper_by_title(a_owner_id, a_scraper.newspaper_title)
         if existing is not None:
             return existing
         return self._repository.create_newspaper(
-            owner_id=owner_id,
-            title=scraper.newspaper_title,
-            description=scraper.newspaper_description,
+            owner_id=a_owner_id,
+            title=a_scraper.newspaper_title,
+            description=a_scraper.newspaper_description,
         )

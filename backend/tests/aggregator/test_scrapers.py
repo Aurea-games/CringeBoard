@@ -88,7 +88,7 @@ SampleFlipboardFeed = """
 
 def test_flipboard_scraper_parses_rss_feed() -> None:
     session = DummySession(SampleFlipboardFeed)
-    scraper = FlipboardMagazineScraper("tech/awesome", session=session)
+    scraper = FlipboardMagazineScraper("tech/awesome", a_session=session)
 
     articles = list(scraper.scrape())
 
