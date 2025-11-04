@@ -1,5 +1,5 @@
 """Collection of API route modules."""
 
-from . import auth, system
+from . import aggregator, auth, system
 
-__all__ = ["auth", "system"]
+__all__ = ["aggregator", "auth", "system"]

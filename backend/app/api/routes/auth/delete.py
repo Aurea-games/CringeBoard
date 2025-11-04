@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 
 from .dependencies import auth_service, get_current_email
 
@@ -6,8 +6,9 @@ router = APIRouter()
 
 
 @router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(current_email: str = Depends(get_current_email)) -> None:
+def delete_user(current_email: str = Depends(get_current_email)) -> Response:
     auth_service.remove_user(current_email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 __all__ = ["router"]

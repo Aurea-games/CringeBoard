@@ -28,7 +28,7 @@ DATABASE_DSN = _load_dsn()
 
 
 def ensure_schema() -> None:
-    """Create minimal auth tables if they do not already exist."""
+    """Create required tables if they do not already exist."""
     with psycopg.connect(DATABASE_DSN, autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -60,6 +60,56 @@ def ensure_schema() -> None:
             cur.execute(
                 """
                 CREATE INDEX IF NOT EXISTS ix_tokens_user_id ON tokens (user_id);
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS newspapers (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_newspapers_owner_id ON newspapers (owner_id);
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS articles (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    url TEXT,
+                    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_articles_owner_id ON articles (owner_id);
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS newspaper_articles (
+                    newspaper_id INTEGER NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
+                    article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (newspaper_id, article_id)
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_newspaper_articles_article_id ON newspaper_articles (article_id);
                 """
             )
 
