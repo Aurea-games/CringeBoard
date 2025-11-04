@@ -45,20 +45,16 @@ class DummyConnection:
         return None
 
 
-def _fake_connect(*args, **kwargs) -> DummyConnection:
+def fake_connect(*args, **kwargs) -> DummyConnection:
     return DummyConnection()
 
 
-psycopg.connect = _fake_connect  # type: ignore[assignment]
+psycopg.connect = fake_connect  # type: ignore[assignment]
 
 import pytest
 
 from app.aggregator.feed import FeedAggregator, ScrapedArticle
-from tests.conftest import (
-    InMemoryAggregatorRepository,
-    InMemoryAuthRepository,
-    SimplePasswordHasher,
-)
+from tests.conftest import InMemoryAggregatorRepository, InMemoryAuthRepository, SimplePasswordHasher
 
 
 class DummyScraper:

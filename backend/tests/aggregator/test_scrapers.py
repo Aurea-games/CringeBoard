@@ -43,11 +43,11 @@ class DummyConnection:
         return None
 
 
-def _fake_connect(*args, **kwargs) -> DummyConnection:
+def fake_connect(*args, **kwargs) -> DummyConnection:
     return DummyConnection()
 
 
-psycopg.connect = _fake_connect  # type: ignore[assignment]
+psycopg.connect = fake_connect  # type: ignore[assignment]
 
 from app.aggregator.scrapers.flipboard import FlipboardMagazineScraper
 

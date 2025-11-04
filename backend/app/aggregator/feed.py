@@ -46,9 +46,9 @@ class FeedAggregator:
         self._settings = get_settings()
 
     def run(self) -> None:
-        owner_id = self._ensure_system_user()
+        owner_id = self.ensure_system_user()
         for scraper in self._scrapers:
-            newspaper = self._ensure_newspaper(owner_id, scraper)
+            newspaper = self.ensure_newspaper(owner_id, scraper)
             newspaper_id = newspaper["id"]
             for article in scraper.scrape():
                 existing = self._repository.find_article_by_url(article.url)
@@ -63,7 +63,7 @@ class FeedAggregator:
                 else:
                     self._repository.assign_article_to_newspaper(existing["id"], newspaper_id)
 
-    def _ensure_system_user(self) -> int:
+    def ensure_system_user(self) -> int:
         email = self._settings.aggregator_user_email
         user_id = self._auth_repository.get_user_id(email)
         if user_id is not None:
@@ -72,7 +72,7 @@ class FeedAggregator:
         password_hash = self._password_hasher.hash(self._settings.aggregator_user_password)
         return self._auth_repository.create_user(email, password_hash)
 
-    def _ensure_newspaper(self, owner_id: int, scraper: FeedScraper) -> dict[str, object]:
+    def ensure_newspaper(self, owner_id: int, scraper: FeedScraper) -> dict[str, object]:
         existing = self._repository.find_newspaper_by_title(owner_id, scraper.newspaper_title)
         if existing is not None:
             return existing

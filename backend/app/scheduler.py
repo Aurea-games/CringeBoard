@@ -10,7 +10,7 @@ from app.api.routes.auth.services import PasswordHasher
 from app.core.config import Settings, get_settings
 
 
-def _build_scrapers(settings: Settings):
+def build_scrapers(settings: Settings):
     scrapers = []
     for feed in settings.rss_feeds:
         parts = [part.strip() for part in feed.split("|") if part.strip()]
@@ -42,7 +42,7 @@ def _build_scrapers(settings: Settings):
 
 def main() -> None:
     settings = get_settings()
-    scrapers = _build_scrapers(settings)
+    scrapers = build_scrapers(settings)
     aggregator = FeedAggregator(
         repository=AggregatorRepository(),
         auth_repository=AuthRepository(),
