@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Login from "./Login.jsx";
 import Register from "./Register.jsx";
+import CreateNewspaper from "./CreateNewspaper.jsx";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -38,6 +39,10 @@ function Header({ onSearch }) {
     window.location.href = "/register";
   }
 
+  function goCreateNewspaper() {
+    window.location.href = "/newspapers/create";
+  }
+
   return (
     <header style={styles.header}>
       <h1 style={{ margin: 0 }}>CringeBoard</h1>
@@ -51,6 +56,9 @@ function Header({ onSearch }) {
         {loggedIn ? (
           <>
             <div style={{ fontSize: 13, color: "#333" }}>{email ? `Hi, ${email}` : "Logged in"}</div>
+            <button onClick={goCreateNewspaper} style={styles.createButton}>
+              New newspaper
+            </button>
             <button onClick={handleLogout} style={styles.logoutButton}>
               Logout
             </button>
@@ -97,15 +105,20 @@ export default function App() {
   if (typeof window !== "undefined") {
     if (window.location.pathname === "/login") return <Login apiBase={apiBase} />;
     if (window.location.pathname === "/register") return <Register apiBase={apiBase} />;
+    if (window.location.pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
   }
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Fetch articles from server with optional server-side search (debounced)
   useEffect(() => {
     let mounted = true;
-    async function load() {
+    const controller = new AbortController();
+    let timer = null;
+
+    async function load(q) {
       setLoading(true);
       setError(null);
       try {
@@ -119,16 +132,18 @@ export default function App() {
         })();
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const res = await fetch(`${apiBase}/v1/articles/`, { headers });
+        const url = `${apiBase}/v1/articles/${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+        const res = await fetch(url, { headers, signal: controller.signal });
         if (!res.ok) {
-          // if backend doesn't provide the v1/articles endpoint, try older paths
+          // if backend doesn't provide the v1/articles endpoint, try older paths (preserve query)
           if (res.status === 404) {
-            const alt = await fetch(`${apiBase}/articles`);
+            const qparam = q ? `?q=${encodeURIComponent(q)}` : "";
+            const alt = await fetch(`${apiBase}/articles${qparam}`, { signal: controller.signal });
             if (alt.ok) {
               const j = await alt.json();
               if (mounted) setArticles(j || []);
             } else {
-              const alt2 = await fetch(`${apiBase}/api/articles`);
+              const alt2 = await fetch(`${apiBase}/api/articles${qparam}`, { signal: controller.signal });
               if (alt2.ok) {
                 const j = await alt2.json();
                 if (mounted) setArticles(j || []);
@@ -144,8 +159,8 @@ export default function App() {
           if (mounted) setArticles(j || []);
         }
       } catch (e) {
-        // fallback: provide mock data so the UI can be built/tested without a backend
         if (mounted) {
+          // fallback: provide mock data so the UI can be built/tested without a backend
           setError(e.message);
           setArticles(mockArticles);
         }
@@ -153,15 +168,19 @@ export default function App() {
         if (mounted) setLoading(false);
       }
     }
-    load();
-    return () => (mounted = false);
-  }, []);
 
-  const filtered = useMemo(() => {
-    if (!query) return articles;
-    const q = query.toLowerCase();
-    return articles.filter((a) => (a.title || "").toLowerCase().includes(q) || (a.content || "").toLowerCase().includes(q));
-  }, [articles, query]);
+    // debounce to avoid hammering server while the user types
+    timer = setTimeout(() => load(query), 300);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  // server-side search is used; displayed articles come directly from the server
+  const filtered = articles;
 
   return (
     <div style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", padding: 20 }}>
@@ -238,6 +257,14 @@ const styles = {
     border: "1px solid #e5e7eb",
     background: "#f8fafc",
     color: "#111827",
+    cursor: "pointer",
+  },
+  createButton: {
+    padding: "8px 12px",
+    borderRadius: 6,
+    border: "1px solid #e5e7eb",
+    background: "#06b6d4",
+    color: "white",
     cursor: "pointer",
   },
   grid: {
