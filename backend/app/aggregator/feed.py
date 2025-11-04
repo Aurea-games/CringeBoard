@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Protocol
+from typing import Protocol
 
+from app.api.routes.aggregator.repository import AggregatorRepository
 from app.api.routes.auth.repository import AuthRepository
 from app.api.routes.auth.services import PasswordHasher
-from app.api.routes.aggregator.repository import AggregatorRepository
 from app.core.config import get_settings
 
 

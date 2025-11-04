@@ -4,9 +4,9 @@ import time
 
 from app.aggregator.feed import FeedAggregator
 from app.aggregator.scrapers import BaseRSSScraper, FlipboardMagazineScraper
+from app.api.routes.aggregator.repository import AggregatorRepository
 from app.api.routes.auth.repository import AuthRepository
 from app.api.routes.auth.services import PasswordHasher
-from app.api.routes.aggregator.repository import AggregatorRepository
 from app.core.config import Settings, get_settings
 
 

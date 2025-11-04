@@ -32,6 +32,7 @@ class BaseRSSScraper(ABC):
     def newspaper_description(self) -> str | None:
         return self._newspaper_description
 
+    @abstractmethod
     def scrape(self) -> Iterable[ScrapedArticle]:
         response = self._session.get(self._feed_url, timeout=15)
         response.raise_for_status()
