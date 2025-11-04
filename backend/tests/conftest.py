@@ -73,6 +73,12 @@ class InMemoryAggregatorRepository:
         )
         return [record.copy() for record in newspapers]
 
+    def find_newspaper_by_title(self, owner_id: int, title: str) -> dict[str, object] | None:
+        for record in self._newspapers.values():
+            if record["owner_id"] == owner_id and record["title"] == title:
+                return record.copy()
+        return None
+
     def get_newspaper(self, newspaper_id: int) -> dict[str, object] | None:
         record = self._newspapers.get(newspaper_id)
         return record.copy() if record else None
@@ -139,6 +145,12 @@ class InMemoryAggregatorRepository:
     def get_article(self, article_id: int) -> dict[str, object] | None:
         record = self._articles.get(article_id)
         return self._clone_article(record) if record else None
+
+    def find_article_by_url(self, url: str) -> dict[str, object] | None:
+        for record in self._articles.values():
+            if record.get("url") == url:
+                return self._clone_article(record)
+        return None
 
     def update_article(
         self,

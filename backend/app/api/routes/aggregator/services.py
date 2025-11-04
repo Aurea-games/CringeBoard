@@ -29,7 +29,7 @@ class AggregatorService:
         return [schemas.Newspaper.model_validate(row) for row in rows]
 
     def create_newspaper(self, owner_email: str, payload: schemas.NewspaperCreate) -> schemas.Newspaper:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         title = payload.title.strip()
         if not title:
             raise HTTPException(
@@ -55,11 +55,11 @@ class AggregatorService:
         owner_email: str,
         payload: schemas.NewspaperUpdate,
     ) -> schemas.Newspaper:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         current = self._repository.get_newspaper(newspaper_id)
         if current is None:
             raise self._NEWSPAPER_NOT_FOUND
-        self._ensure_ownership(current["owner_id"], owner_id, "modify this newspaper")
+        self.ensure_ownership(current["owner_id"], owner_id, "modify this newspaper")
 
         updates = payload.model_dump(exclude_unset=True)
         if not updates:
@@ -87,11 +87,11 @@ class AggregatorService:
         return schemas.Newspaper.model_validate(record)
 
     def delete_newspaper(self, newspaper_id: int, owner_email: str) -> None:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         current = self._repository.get_newspaper(newspaper_id)
         if current is None:
             raise self._NEWSPAPER_NOT_FOUND
-        self._ensure_ownership(current["owner_id"], owner_id, "delete this newspaper")
+        self.ensure_ownership(current["owner_id"], owner_id, "delete this newspaper")
 
         if not self._repository.delete_newspaper(newspaper_id):
             raise self._NEWSPAPER_NOT_FOUND
@@ -109,11 +109,11 @@ class AggregatorService:
         owner_email: str,
         payload: schemas.ArticleCreate,
     ) -> schemas.Article:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         newspaper = self._repository.get_newspaper(newspaper_id)
         if newspaper is None:
             raise self._NEWSPAPER_NOT_FOUND
-        self._ensure_ownership(newspaper["owner_id"], owner_id, "add articles to this newspaper")
+        self.ensure_ownership(newspaper["owner_id"], owner_id, "add articles to this newspaper")
 
         article_title = payload.title.strip()
         if not article_title:
@@ -142,16 +142,16 @@ class AggregatorService:
         article_id: int,
         owner_email: str,
     ) -> schemas.Article:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         newspaper = self._repository.get_newspaper(newspaper_id)
         if newspaper is None:
             raise self._NEWSPAPER_NOT_FOUND
-        self._ensure_ownership(newspaper["owner_id"], owner_id, "modify this newspaper")
+        self.ensure_ownership(newspaper["owner_id"], owner_id, "modify this newspaper")
 
         article = self._repository.get_article(article_id)
         if article is None:
             raise self._ARTICLE_NOT_FOUND
-        self._ensure_ownership(article["owner_id"], owner_id, "modify this article")
+        self.ensure_ownership(article["owner_id"], owner_id, "modify this article")
 
         record = self._repository.assign_article_to_newspaper(article_id, newspaper_id)
         if record is None:
@@ -170,11 +170,11 @@ class AggregatorService:
         owner_email: str,
         payload: schemas.ArticleUpdate,
     ) -> schemas.Article:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         current = self._repository.get_article(article_id)
         if current is None:
             raise self._ARTICLE_NOT_FOUND
-        self._ensure_ownership(current["owner_id"], owner_id, "modify this article")
+        self.ensure_ownership(current["owner_id"], owner_id, "modify this article")
 
         updates = payload.model_dump(exclude_unset=True)
         if not updates:
@@ -203,16 +203,16 @@ class AggregatorService:
         return schemas.Article.model_validate(record)
 
     def delete_article(self, article_id: int, owner_email: str) -> None:
-        owner_id = self._get_user_id(owner_email)
+        owner_id = self.get_user_id(owner_email)
         current = self._repository.get_article(article_id)
         if current is None:
             raise self._ARTICLE_NOT_FOUND
-        self._ensure_ownership(current["owner_id"], owner_id, "delete this article")
+        self.ensure_ownership(current["owner_id"], owner_id, "delete this article")
 
         if not self._repository.delete_article(article_id):
             raise self._ARTICLE_NOT_FOUND
 
-    def _get_user_id(self, email: str) -> int:
+    def get_user_id(self, email: str) -> int:
         user_id = self._auth_repository.get_user_id(email)
         if user_id is None:
             raise HTTPException(
@@ -222,7 +222,7 @@ class AggregatorService:
         return user_id
 
     @staticmethod
-    def _ensure_ownership(resource_owner_id: int, requester_id: int, action: str) -> None:
+    def ensure_ownership(resource_owner_id: int, requester_id: int, action: str) -> None:
         if resource_owner_id != requester_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -84,6 +84,19 @@ class AggregatorRepository:
                 result.append(newspaper)
         return result
 
+    def find_newspaper_by_title(self, owner_id: int, title: str) -> NewspaperRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, description, owner_id, created_at, updated_at
+                FROM newspapers
+                WHERE owner_id = %s AND title = %s
+                """,
+                (owner_id, title),
+            )
+            row = cur.fetchone()
+        return self.row_to_newspaper(row)
+
     def get_newspaper(self, newspaper_id: int) -> NewspaperRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
@@ -238,6 +251,36 @@ class AggregatorRepository:
     def get_article(self, article_id: int) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             return self.fetch_article(cur, article_id)
+
+    def find_article_by_url(self, url: str) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.content,
+                    a.url,
+                    a.owner_id,
+                    a.created_at,
+                    a.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na.newspaper_id
+                            FROM newspaper_articles AS na
+                            WHERE na.article_id = a.id
+                            ORDER BY na.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM articles AS a
+                WHERE a.url = %s
+                LIMIT 1
+                """,
+                (url,),
+            )
+            row = cur.fetchone()
+        return self.row_to_article(row)
 
     def update_article(
         self,
