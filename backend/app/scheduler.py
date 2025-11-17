@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 
 from app.aggregator.feed import FeedAggregator
-from app.aggregator.scrapers import BaseRSSScraper, FlipboardMagazineScraper
+from app.aggregator.scrapers import BaseRSSScraper, FlipboardAccountScraper, FlipboardMagazineScraper
 from app.api.routes.aggregator.repository import AggregatorRepository
 from app.api.routes.auth.repository import AuthRepository
 from app.api.routes.auth.services import PasswordHasher
@@ -37,6 +37,10 @@ def build_scrapers(a_settings: Settings):
         if not magazine:
             continue
         scrapers.append(FlipboardMagazineScraper(magazine))
+    for account in a_settings.flipboard_accounts:
+        if not account:
+            continue
+        scrapers.append(FlipboardAccountScraper(account))
     return scrapers
 
 
