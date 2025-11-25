@@ -30,7 +30,7 @@ function Header({ onSearch }) {
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user_email");
     } catch (e) {
-      // ignore
+      console.error("Failed to logout:", e);
     }
     window.location.href = "/";
   }
@@ -194,6 +194,7 @@ export default function App() {
           try {
             return localStorage.getItem("access_token");
           } catch (e) {
+            console.error("Failed to access localStorage:", e);
             return null;
           }
         })();

@@ -80,6 +80,7 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
           setSearchResults(j || []);
         }
       } catch (e) {
+        console.error("Failed to search articles:", e);
         setSearchResults([]);
       } finally {
         setSearching(false);
@@ -133,6 +134,7 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles/${articleId}`, { method: "DELETE", headers: authHeaders() });
       if (!res.ok) throw new Error(`Failed to remove article (${res.status})`);
       const body = await res.json().catch(() => null);
+      console.error("Failed to remove article:", body);
       // update attached list: remove the article from attachments
       setAttached((prev) => prev.filter((a) => a.id !== articleId));
     } catch (err) {
@@ -264,6 +266,7 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
       await onSave(article.id, { title, content, url });
       setEditing(false);
     } catch (e) {
+      console.error("Failed to save article:", e);
       // onSave sets error state in parent
     } finally {
       setSaving(false);

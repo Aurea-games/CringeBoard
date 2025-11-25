@@ -94,7 +94,7 @@ export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_
       {loading ? (
         <div>Loading…</div>
       ) : list.length === 0 ? (
-        <div style={{ color: "#666" }}>No newspapers found. Create one using the "New newspaper" button.</div>
+        <div style={{ color: "#666" }}>No newspapers found. Create one using the &quot;New newspaper&quot; button.</div>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {list.map((n) => (
@@ -149,3 +149,14 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
     </div>
   );
 }
+
+NewspaperCard.propTypes = {
+  newspaper: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    description: PropTypes.string,
+    created_at: PropTypes.string,
+  }).isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onPatch: PropTypes.func.isRequired,
+};

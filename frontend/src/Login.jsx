@@ -112,7 +112,7 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
         </form>
 
         <div style={{ marginTop: 14, fontSize: 13, color: "#555" }}>
-          <div>Don't have an account? <a href="/register">Register</a></div>
+          <div>Don&apos;t have an account? <a href="/register">Register</a></div>
           <div style={{ marginTop: 6 }}>
             Development note: form posts to <code>{apiBase}/v1/auth/login</code>
           </div>

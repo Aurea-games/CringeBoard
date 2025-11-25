@@ -90,6 +90,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
           setSearchResults(j || []);
         }
       } catch (e) {
+        console.error("Failed to search articles:", e);
         setSearchResults([]);
       } finally {
         setSearching(false);
