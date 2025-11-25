@@ -369,8 +369,8 @@ class AggregatorRepository:
             WHERE a.url = %s
             LIMIT 1
             """,
-            (url,),
-        )
+                (url,),
+            )
             row = cur.fetchone()
         return self.row_to_article(row)
 
