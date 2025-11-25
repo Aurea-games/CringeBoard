@@ -105,3 +105,19 @@ def attach_existing_article(
         article_id,
         current_email,
     )
+
+
+@router.delete(
+    "/{newspaper_id}/articles/{article_id}",
+    response_model=schemas.Article,
+)
+def detach_existing_article(
+    newspaper_id: int,
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Article:
+    return aggregator_dependencies.aggregator_service.detach_article_from_newspaper(
+        newspaper_id,
+        article_id,
+        current_email,
+    )

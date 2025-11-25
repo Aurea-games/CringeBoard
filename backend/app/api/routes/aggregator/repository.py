@@ -393,6 +393,18 @@ class AggregatorRepository:
             )
             return self.fetch_article(cur, article_id)
 
+    def detach_article_from_newspaper(self, article_id: int, newspaper_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM newspaper_articles
+                WHERE newspaper_id = %s AND article_id = %s
+                """,
+                (newspaper_id, article_id),
+            )
+            # return updated article row (may still exist in other newspapers)
+            return self.fetch_article(cur, article_id)
+
     def delete_article(self, article_id: int) -> bool:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM articles WHERE id = %s", (article_id,))

@@ -181,6 +181,28 @@ class AggregatorService:
             raise self._ARTICLE_NOT_FOUND
         return schemas.Article.model_validate(record)
 
+    def detach_article_from_newspaper(
+        self,
+        newspaper_id: int,
+        article_id: int,
+        owner_email: str,
+    ) -> schemas.Article:
+        owner_id = self.get_user_id(owner_email)
+        newspaper = self._repository.get_newspaper(newspaper_id)
+        if newspaper is None:
+            raise self._NEWSPAPER_NOT_FOUND
+        self.ensure_ownership(newspaper["owner_id"], owner_id, "modify this newspaper")
+
+        article = self._repository.get_article(article_id)
+        if article is None:
+            raise self._ARTICLE_NOT_FOUND
+
+        record = self._repository.detach_article_from_newspaper(article_id, newspaper_id)
+        if record is None:
+            # If article exists but association removal failed, return article not found
+            raise self._ARTICLE_NOT_FOUND
+        return schemas.Article.model_validate(record)
+
     def get_article(self, article_id: int) -> schemas.Article:
         record = self._repository.get_article(article_id)
         if record is None:
