@@ -215,6 +215,51 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Search",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Favorite",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/articles/{{ARTICLE_ID}}/favorite",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"articles",
+						"{{ARTICLE_ID}}",
+						"favorite"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List Popularity",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
 		}
 	]
 }

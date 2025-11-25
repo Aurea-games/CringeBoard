@@ -44,9 +44,10 @@ class AggregatorRepository:
             "content": row[2],
             "url": row[3],
             "owner_id": row[4],
-            "created_at": row[5],
-            "updated_at": row[6],
-            "newspaper_ids": cls.normalize_newspaper_ids(row[7]),
+            "popularity": row[5],
+            "created_at": row[6],
+            "updated_at": row[7],
+            "newspaper_ids": cls.normalize_newspaper_ids(row[8]),
         }
 
     def create_newspaper(self, owner_id: int, title: str, description: str | None) -> NewspaperRow:
@@ -179,6 +180,7 @@ class AggregatorRepository:
         search: str | None = None,
         owner_id: int | None = None,
         newspaper_id: int | None = None,
+        order_by_popularity: bool = False,
     ) -> list[ArticleRow]:
         clauses: list[str] = []
         params: list[Any] = []
@@ -214,6 +216,7 @@ class AggregatorRepository:
                 a.content,
                 a.url,
                 a.owner_id,
+                COALESCE(f.popularity, 0) AS popularity,
                 a.created_at,
                 a.updated_at,
                 COALESCE(
@@ -226,11 +229,19 @@ class AggregatorRepository:
                     ARRAY[]::INTEGER[]
                 ) AS newspaper_ids
             FROM articles AS a
+            LEFT JOIN (
+                SELECT article_id, COUNT(*) AS popularity
+                FROM article_favorites
+                GROUP BY article_id
+            ) AS f ON f.article_id = a.id
             """
         ]
         if clauses:
             sql.append("WHERE " + " AND ".join(clauses))
-        sql.append("ORDER BY a.created_at DESC")
+        if order_by_popularity:
+            sql.append("ORDER BY COALESCE(f.popularity, 0) DESC, a.created_at DESC")
+        else:
+            sql.append("ORDER BY a.created_at DESC")
 
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("\n".join(sql), tuple(params))
@@ -252,6 +263,7 @@ class AggregatorRepository:
                 a.content,
                 a.url,
                 a.owner_id,
+                COALESCE(f.popularity, 0) AS popularity,
                 a.created_at,
                 a.updated_at,
                 COALESCE(
@@ -264,6 +276,11 @@ class AggregatorRepository:
                     ARRAY[]::INTEGER[]
                 ) AS newspaper_ids
             FROM articles AS a
+            LEFT JOIN (
+                SELECT article_id, COUNT(*) AS popularity
+                FROM article_favorites
+                GROUP BY article_id
+            ) AS f ON f.article_id = a.id
             WHERE a.id = %s
             """,
             (article_id,),
@@ -309,33 +326,51 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             return self.fetch_article(cur, article_id)
 
+    def add_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO article_favorites (user_id, article_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
     def find_article_by_url(self, url: str) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT
                     a.id,
-                    a.title,
-                    a.content,
-                    a.url,
-                    a.owner_id,
-                    a.created_at,
-                    a.updated_at,
-                    COALESCE(
-                        ARRAY(
-                            SELECT na.newspaper_id
-                            FROM newspaper_articles AS na
-                            WHERE na.article_id = a.id
-                            ORDER BY na.newspaper_id
-                        ),
-                        ARRAY[]::INTEGER[]
-                    ) AS newspaper_ids
-                FROM articles AS a
-                WHERE a.url = %s
-                LIMIT 1
-                """,
-                (url,),
-            )
+                a.title,
+                a.content,
+                a.url,
+                a.owner_id,
+                COALESCE(f.popularity, 0) AS popularity,
+                a.created_at,
+                a.updated_at,
+                COALESCE(
+                    ARRAY(
+                        SELECT na.newspaper_id
+                        FROM newspaper_articles AS na
+                        WHERE na.article_id = a.id
+                        ORDER BY na.newspaper_id
+                    ),
+                    ARRAY[]::INTEGER[]
+                ) AS newspaper_ids
+            FROM articles AS a
+            LEFT JOIN (
+                SELECT article_id, COUNT(*) AS popularity
+                FROM article_favorites
+                GROUP BY article_id
+            ) AS f ON f.article_id = a.id
+            WHERE a.url = %s
+            LIMIT 1
+            """,
+            (url,),
+        )
             row = cur.fetchone()
         return self.row_to_article(row)
 

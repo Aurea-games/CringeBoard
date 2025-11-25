@@ -47,6 +47,7 @@ class Article(BaseModel):
     content: str | None
     url: str | None
     owner_id: int
+    popularity: int = 0
     created_at: datetime
     updated_at: datetime
     newspaper_ids: list[int] = Field(default_factory=list)

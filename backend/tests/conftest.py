@@ -63,6 +63,7 @@ class InMemoryAggregatorRepository:
     def _clone_article(self, record: dict[str, object]) -> dict[str, object]:
         clone = record.copy()
         clone["newspaper_ids"] = sorted(record.get("newspaper_ids", set()))
+        clone["popularity"] = len(record.get("favorite_user_ids", set()))
         return clone
 
     def list_newspapers(self) -> list[dict[str, object]]:
@@ -135,6 +136,7 @@ class InMemoryAggregatorRepository:
         search: str | None = None,
         owner_id: int | None = None,
         newspaper_id: int | None = None,
+        order_by_popularity: bool = False,
     ) -> list[dict[str, object]]:
         articles = list(self._articles.values())
         if owner_id is not None:
@@ -153,7 +155,10 @@ class InMemoryAggregatorRepository:
                         filtered_articles.append(article)
                 articles = filtered_articles
 
-        articles.sort(key=lambda item: item["created_at"], reverse=True)
+        if order_by_popularity:
+            articles.sort(key=lambda item: (len(item.get("favorite_user_ids", set())), item["created_at"]), reverse=True)
+        else:
+            articles.sort(key=lambda item: item["created_at"], reverse=True)
         return [self._clone_article(article) for article in articles]
 
     def create_article(
@@ -176,6 +181,7 @@ class InMemoryAggregatorRepository:
             "created_at": timestamp,
             "updated_at": timestamp,
             "newspaper_ids": {newspaper_id},
+            "favorite_user_ids": set(),
         }
         self._articles[article_id] = record
         return self._clone_article(record)
@@ -189,6 +195,14 @@ class InMemoryAggregatorRepository:
             if record.get("url") == url:
                 return self._clone_article(record)
         return None
+
+    def add_article_favorite(self, user_id: int, article_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        favorites = record.setdefault("favorite_user_ids", set())
+        favorites.add(user_id)
+        return self._clone_article(record)
 
     def update_article(
         self,

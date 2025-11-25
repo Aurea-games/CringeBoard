@@ -116,6 +116,7 @@ class AggregatorService:
         search: str | None = None,
         owner_email: str | None = None,
         newspaper_id: int | None = None,
+        order_by_popularity: bool = False,
     ) -> list[schemas.Article]:
         owner_id: int | None = None
         if owner_email:
@@ -124,7 +125,12 @@ class AggregatorService:
             if owner_id is None:
                 return []
 
-        rows = self._repository.search_articles(search=search, owner_id=owner_id, newspaper_id=newspaper_id)
+        rows = self._repository.search_articles(
+            search=search,
+            owner_id=owner_id,
+            newspaper_id=newspaper_id,
+            order_by_popularity=order_by_popularity,
+        )
         return [schemas.Article.model_validate(row) for row in rows]
 
     def create_article(
@@ -205,6 +211,17 @@ class AggregatorService:
 
     def get_article(self, article_id: int) -> schemas.Article:
         record = self._repository.get_article(article_id)
+        if record is None:
+            raise self._ARTICLE_NOT_FOUND
+        return schemas.Article.model_validate(record)
+
+    def favorite_article(self, article_id: int, user_email: str) -> schemas.Article:
+        user_id = self.get_user_id(user_email)
+        article = self._repository.get_article(article_id)
+        if article is None:
+            raise self._ARTICLE_NOT_FOUND
+
+        record = self._repository.add_article_favorite(user_id, article_id)
         if record is None:
             raise self._ARTICLE_NOT_FOUND
         return schemas.Article.model_validate(record)

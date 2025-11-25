@@ -68,6 +68,7 @@ def test_article_owner_can_manage_article(auth_test_client: TestClient) -> None:
     article = create_response.json()
     article_id = article["id"]
     assert article["newspaper_ids"] == [newspaper_id]
+    assert article["popularity"] == 0
 
     list_response = auth_test_client.get(f"{NEWSPAPERS_URL}/{newspaper_id}/articles")
     assert list_response.status_code == 200
@@ -86,6 +87,7 @@ def test_article_owner_can_manage_article(auth_test_client: TestClient) -> None:
     assert updated["title"] == "Updated Launch Event"
     assert updated["content"] == "Updated coverage."
     assert newspaper_id in updated["newspaper_ids"]
+    assert updated["popularity"] == 0
 
     delete_response = auth_test_client.delete(
         f"{ARTICLES_URL}/{article_id}",
@@ -198,6 +200,91 @@ def test_owner_can_attach_existing_article_to_newspaper(auth_test_client: TestCl
     updated_article = attach_response.json()
     assert updated_article["id"] == article_id
     assert updated_article["newspaper_ids"] == sorted([first_newspaper_id, second_newspaper_id])
+
+
+def test_users_can_favorite_articles(auth_test_client: TestClient) -> None:
+    author_tokens = register_user(auth_test_client, "author2@example.org")
+    fan_tokens = register_user(auth_test_client, "fan@example.org")
+    second_fan_tokens = register_user(auth_test_client, "fan2@example.org")
+
+    newspaper_id = create_newspaper(auth_test_client, author_tokens["access_token"])
+    article = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={
+            "title": "Community Update",
+            "content": "Weekly digest.",
+        },
+        headers=auth_headers(author_tokens["access_token"]),
+    ).json()
+    article_id = article["id"]
+    assert article["popularity"] == 0
+
+    first_favorite = auth_test_client.post(
+        f"{ARTICLES_URL}/{article_id}/favorite",
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert first_favorite.status_code == 200
+    assert first_favorite.json()["popularity"] == 1
+
+    duplicate_favorite = auth_test_client.post(
+        f"{ARTICLES_URL}/{article_id}/favorite",
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert duplicate_favorite.status_code == 200
+    assert duplicate_favorite.json()["popularity"] == 1
+
+    second_favorite = auth_test_client.post(
+        f"{ARTICLES_URL}/{article_id}/favorite",
+        headers=auth_headers(second_fan_tokens["access_token"]),
+    )
+    assert second_favorite.status_code == 200
+    assert second_favorite.json()["popularity"] == 2
+
+    refreshed = auth_test_client.get(f"{ARTICLES_URL}/{article_id}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["popularity"] == 2
+
+
+def test_list_articles_sorted_by_popularity(auth_test_client: TestClient) -> None:
+    author_tokens = register_user(auth_test_client, "author3@example.org")
+    fan_one = register_user(auth_test_client, "fan3@example.org")
+    fan_two = register_user(auth_test_client, "fan4@example.org")
+
+    newspaper_id = create_newspaper(auth_test_client, author_tokens["access_token"])
+    low_pop = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={"title": "Low", "content": "low"},
+        headers=auth_headers(author_tokens["access_token"]),
+    ).json()
+    mid_pop = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={"title": "Mid", "content": "mid"},
+        headers=auth_headers(author_tokens["access_token"]),
+    ).json()
+    high_pop = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={"title": "High", "content": "high"},
+        headers=auth_headers(author_tokens["access_token"]),
+    ).json()
+
+    # favorite counts: low=0, mid=1, high=2
+    auth_test_client.post(
+        f"{ARTICLES_URL}/{mid_pop['id']}/favorite",
+        headers=auth_headers(fan_one["access_token"]),
+    )
+    auth_test_client.post(
+        f"{ARTICLES_URL}/{high_pop['id']}/favorite",
+        headers=auth_headers(fan_one["access_token"]),
+    )
+    auth_test_client.post(
+        f"{ARTICLES_URL}/{high_pop['id']}/favorite",
+        headers=auth_headers(fan_two["access_token"]),
+    )
+
+    popular_response = auth_test_client.get(f"{ARTICLES_URL}/popular")
+    assert popular_response.status_code == 200
+    titles_order = [article["title"] for article in popular_response.json()]
+    assert titles_order[:3] == ["High", "Mid", "Low"]
 
     articles_in_first = auth_test_client.get(f"{NEWSPAPERS_URL}/{first_newspaper_id}/articles")
     assert any(article["id"] == article_id and first_newspaper_id in article["newspaper_ids"] for article in articles_in_first.json())

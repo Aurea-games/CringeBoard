@@ -99,6 +99,21 @@ def ensure_schema() -> None:
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS article_favorites (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, article_id)
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_article_favorites_article_id ON article_favorites (article_id);
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS newspaper_articles (
                     newspaper_id INTEGER NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
                     article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,

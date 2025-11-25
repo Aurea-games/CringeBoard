@@ -31,11 +31,39 @@ def search_articles(
 
 
 @router.get(
+    "/popular",
+    response_model=list[schemas.Article],
+)
+def list_popular_articles(
+    search: str | None = Query(default=None, alias="q"),
+    owner_email: str | None = Query(default=None),
+    newspaper_id: int | None = Query(default=None),
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.search_articles(
+        search=search,
+        owner_email=owner_email,
+        newspaper_id=newspaper_id,
+        order_by_popularity=True,
+    )
+
+
+@router.get(
     "/{article_id}",
     response_model=schemas.Article,
 )
 def get_article(article_id: int) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.get_article(article_id)
+
+
+@router.post(
+    "/{article_id}/favorite",
+    response_model=schemas.Article,
+)
+def favorite_article(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Article:
+    return aggregator_dependencies.aggregator_service.favorite_article(article_id, current_email)
 
 
 @router.patch(
