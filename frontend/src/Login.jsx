@@ -33,6 +33,19 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
         } catch (e) {
           // ignore storage failures
         }
+        // fetch authenticated user info to store user id
+        try {
+          const meRes = await fetch(`${apiBase}/v1/auth/users/me`, {
+            headers: { Authorization: `Bearer ${body.access_token}` },
+          });
+          if (meRes.ok) {
+            const me = await meRes.json();
+            if (me?.id) localStorage.setItem("user_id", String(me.id));
+            if (me?.email) localStorage.setItem("user_email", me.email);
+          }
+        } catch (e) {
+          // ignore
+        }
         // redirect to home
         window.location.href = "/";
       } else {

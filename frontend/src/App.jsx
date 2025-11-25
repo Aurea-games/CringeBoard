@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { previewText } from "./utils.js";
 import Login from "./Login.jsx";
 import Register from "./Register.jsx";
 import CreateNewspaper from "./CreateNewspaper.jsx";
+import NewspaperList from "./NewspaperList.jsx";
+import NewspaperDetail from "./NewspaperDetail.jsx";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -43,6 +46,10 @@ function Header({ onSearch }) {
     window.location.href = "/newspapers/create";
   }
 
+  function goNewspapers() {
+    window.location.href = "/newspapers";
+  }
+
   return (
     <header style={styles.header}>
       <h1 style={{ margin: 0 }}>CringeBoard</h1>
@@ -58,6 +65,9 @@ function Header({ onSearch }) {
             <div style={{ fontSize: 13, color: "#333" }}>{email ? `Hi, ${email}` : "Logged in"}</div>
             <button onClick={goCreateNewspaper} style={styles.createButton}>
               New newspaper
+            </button>
+            <button onClick={goNewspapers} style={styles.createButton}>
+              My newspapers
             </button>
             <button onClick={handleLogout} style={styles.logoutButton}>
               Logout
@@ -79,24 +89,73 @@ function Header({ onSearch }) {
 }
 
 function ArticleCard({ article }) {
+  const [flipped, setFlipped] = useState(false);
+
+  function toggleFlip() {
+    setFlipped((v) => !v);
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleFlip();
+    }
+  }
+
+  const frontStyle = {
+    ...styles.card,
+    ...styles.front,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backfaceVisibility: "hidden",
+    opacity: flipped ? 0 : 1,
+    visibility: flipped ? "hidden" : "visible",
+    transition: "opacity 0.25s ease",
+  };
+  const backStyle = {
+    ...styles.card,
+    ...styles.back,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backfaceVisibility: "hidden",
+    transform: "rotateY(180deg)",
+    opacity: flipped ? 1 : 0,
+    visibility: flipped ? "visible" : "hidden",
+    transition: "opacity 0.25s ease",
+  };
+
   return (
-    <article style={styles.card}>
-      <h3 style={{ margin: "0 0 8px 0" }}>{article.title}</h3>
-      <p style={{ margin: 0, color: "#444" }}>
-        {article.content ? article.content.slice(0, 220) + (article.content.length > 220 ? "…" : "") : "No summary"}
-      </p>
-      <div style={{ marginTop: 10 }}>
-        {article.url && (
-          <a href={article.url} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
-            Read original
-          </a>
-        )}
+    <div
+      style={{ ...styles.flipContainer, width: "100%", display: "block" }}
+      onClick={toggleFlip}
+      onKeyDown={handleKey}
+      role="button"
+      tabIndex={0}
+      aria-pressed={flipped}
+    >
+      <div style={{ ...styles.flipper, transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)", minHeight: 110 }}>
+        <article style={frontStyle}>
+          <h3 style={{ margin: 0, textAlign: "left" }}>{article.title}</h3>
+        </article>
+
+        <article style={backStyle}>
+          <p style={{ margin: 0, color: "#444" }}>{previewText(article.content, 160, "No description")}</p>
+          <div style={{ marginTop: 10 }}>
+            {article.url && (
+              <a href={article.url} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }} onClick={(e) => e.stopPropagation()}>
+                Read original
+              </a>
+            )}
+          </div>
+        </article>
       </div>
-      <div style={styles.cardFooter}>
-        <small>{article.owner_id ? `owner:${article.owner_id}` : ""}</small>
-        <small>{article.created_at ? new Date(article.created_at).toLocaleDateString() : ""}</small>
-      </div>
-    </article>
+    </div>
   );
 }
 
@@ -106,6 +165,8 @@ export default function App() {
     if (window.location.pathname === "/login") return <Login apiBase={apiBase} />;
     if (window.location.pathname === "/register") return <Register apiBase={apiBase} />;
     if (window.location.pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
+    if (window.location.pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
+    if (/^\/newspapers\/\d+$/.test(window.location.pathname)) return <NewspaperDetail apiBase={apiBase} />;
   }
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState([]);
@@ -122,7 +183,6 @@ export default function App() {
       setLoading(true);
       setError(null);
       try {
-        // prefer the backend aggregator endpoint
         const token = (() => {
           try {
             return localStorage.getItem("access_token");
@@ -270,7 +330,57 @@ const styles = {
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: 16,
+    // row gap then column gap: give extra horizontal space between cards
+    gap: "24px 40px",
+    columnGap: 40,
+    rowGap: 24,
+  },
+  flipContainer: {
+    perspective: "1000px",
+    cursor: "pointer",
+    display: "block",
+    position: "relative",
+    minHeight: 140,
+  },
+  flipper: {
+    position: "relative",
+    transformStyle: "preserve-3d",
+    transition: "transform 0.6s",
+  },
+  front: {
+    backfaceVisibility: "hidden",
+    position: "relative",
+    zIndex: 2,
+  },
+  back: {
+    transform: "rotateY(180deg)",
+    backfaceVisibility: "hidden",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+  },
+  overlayRoot: {
+    position: "fixed",
+    inset: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  overlayBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.45)",
+  },
+  overlayContent: {
+    position: "relative",
+    zIndex: 1001,
+    maxWidth: "96vw",
+    width: "min(1100px, 96vw)",
+    maxHeight: "90vh",
+    padding: 12,
   },
   card: {
     padding: 16,
@@ -282,6 +392,8 @@ const styles = {
     flexDirection: "column",
     justifyContent: "space-between",
     minHeight: 110,
+    cursor: "pointer",
+    width: "100%",
   },
   cardFooter: {
     marginTop: 12,

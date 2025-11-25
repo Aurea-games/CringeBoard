@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { previewText } from "./utils.js";
 
 export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000" }) {
   const [title, setTitle] = useState("");
@@ -190,7 +191,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
               {searchResults.map((a) => (
                 <div key={a.id} style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}>
                   <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: "#555", marginTop: 6 }}>{a.content ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "") : ""}</div>
+                  <div style={{ color: "#555", marginTop: 6 }}>{previewText(a.content, 140, "No description")}</div>
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                     <button onClick={() => attachArticle(a.id)} style={{ padding: "6px 8px", borderRadius: 6, background: "#2563eb", color: "white", border: "none" }}>
                       Attach
@@ -239,7 +240,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
                 {attached.map((a) => (
                   <div key={a.id} style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}>
                     <div style={{ fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ color: "#555", marginTop: 6 }}>{a.content ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "") : ""}</div>
+                    <div style={{ color: "#555", marginTop: 6 }}>{previewText(a.content, 140, "No description")}</div>
                     <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                       <a href={a.url || "#"} target="_blank" rel="noreferrer" style={{ color: "#2563eb", alignSelf: "center" }}>
                         View
