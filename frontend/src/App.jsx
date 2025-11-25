@@ -35,8 +35,6 @@ function Header({ onSearch }) {
     window.location.href = "/";
   }
 
-
-
   function goLogin() {
     window.location.href = "/login";
   }
@@ -65,7 +63,9 @@ function Header({ onSearch }) {
         />
         {loggedIn ? (
           <>
-            <div style={{ fontSize: 13, color: "#333" }}>{email ? `Hi, ${email}` : "Logged in"}</div>
+            <div style={{ fontSize: 13, color: "#333" }}>
+              {email ? `Hi, ${email}` : "Logged in"}
+            </div>
             <button onClick={goCreateNewspaper} style={styles.createButton}>
               New newspaper
             </button>
@@ -142,16 +142,30 @@ function ArticleCard({ article }) {
       tabIndex={0}
       aria-pressed={flipped}
     >
-      <div style={{ ...styles.flipper, transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)", minHeight: 110 }}>
+      <div
+        style={{
+          ...styles.flipper,
+          transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+          minHeight: 110,
+        }}
+      >
         <article style={frontStyle}>
           <h3 style={{ margin: 0, textAlign: "left" }}>{article.title}</h3>
         </article>
 
         <article style={backStyle}>
-          <p style={{ margin: 0, color: "#444" }}>{previewText(article.content, 160, "No description")}</p>
+          <p style={{ margin: 0, color: "#444" }}>
+            {previewText(article.content, 160, "No description")}
+          </p>
           <div style={{ marginTop: 10 }}>
             {article.url && (
-              <a href={article.url} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }} onClick={(e) => e.stopPropagation()}>
+              <a
+                href={article.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#2563eb" }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 Read original
               </a>
             )}
@@ -206,12 +220,16 @@ export default function App() {
           // if backend doesn't provide the v1/articles endpoint, try older paths (preserve query)
           if (res.status === 404) {
             const qparam = q ? `?q=${encodeURIComponent(q)}` : "";
-            const alt = await fetch(`${apiBase}/articles${qparam}`, { signal: controller.signal });
+            const alt = await fetch(`${apiBase}/articles${qparam}`, {
+              signal: controller.signal,
+            });
             if (alt.ok) {
               const j = await alt.json();
               if (mounted) setArticles(j || []);
             } else {
-              const alt2 = await fetch(`${apiBase}/api/articles${qparam}`, { signal: controller.signal });
+              const alt2 = await fetch(`${apiBase}/api/articles${qparam}`, {
+                signal: controller.signal,
+              });
               if (alt2.ok) {
                 const j = await alt2.json();
                 if (mounted) setArticles(j || []);
@@ -255,10 +273,16 @@ export default function App() {
   if (pathname === "/register") return <Register apiBase={apiBase} />;
   if (pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
   if (pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
-  if (/^\/newspapers\/\d+$/.test(pathname)) return <NewspaperDetail apiBase={apiBase} />;
+  if (/^\/newspapers\/\d+$/.test(pathname))
+    return <NewspaperDetail apiBase={apiBase} />;
 
   return (
-    <div style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", padding: 20 }}>
+    <div
+      style={{
+        fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        padding: 20,
+      }}
+    >
       <Header onSearch={setQuery} />
 
       <main>
@@ -269,15 +293,20 @@ export default function App() {
             <>
               {error && (
                 <div style={{ marginBottom: 12, color: "#b02a37" }}>
-                  <strong>Warning:</strong> Failed to fetch articles from API: {error}. Showing sample data.
+                  <strong>Warning:</strong> Failed to fetch articles from API: {error}.
+                  Showing sample data.
                 </div>
               )}
 
               <div style={styles.grid}>
                 {filtered.length === 0 ? (
-                  <div style={{ gridColumn: "1/-1", color: "#666" }}>No articles found.</div>
+                  <div style={{ gridColumn: "1/-1", color: "#666" }}>
+                    No articles found.
+                  </div>
                 ) : (
-                  filtered.map((article) => <ArticleCard key={article.id || article.title} article={article} />)
+                  filtered.map((article) => (
+                    <ArticleCard key={article.id || article.title} article={article} />
+                  ))
                 )}
               </div>
             </>
@@ -434,7 +463,8 @@ const mockArticles = [
   {
     id: "2",
     title: "How to post your first cringe",
-    content: "This guide helps you create your first cringe content and share it with the world.",
+    content:
+      "This guide helps you create your first cringe content and share it with the world.",
     author: "Moderator",
     published_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },

@@ -30,7 +30,8 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
         try {
           localStorage.setItem("access_token", body.access_token);
           localStorage.setItem("user_email", email);
-          if (body.refresh_token) localStorage.setItem("refresh_token", body.refresh_token);
+          if (body.refresh_token)
+            localStorage.setItem("refresh_token", body.refresh_token);
         } catch {
           // ignore storage failures
         }
@@ -60,8 +61,21 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
   }
 
   return (
-    <div style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", padding: 20 }}>
-      <div style={{ maxWidth: 480, margin: "40px auto", padding: 20, border: "1px solid #eee", borderRadius: 8 }}>
+    <div
+      style={{
+        fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 480,
+          margin: "40px auto",
+          padding: 20,
+          border: "1px solid #eee",
+          borderRadius: 8,
+        }}
+      >
         <h2 style={{ marginTop: 0 }}>Login</h2>
         <form onSubmit={handleSubmit}>
           <label style={{ display: "block", marginBottom: 8 }}>
@@ -71,7 +85,12 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #ddd" }}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 6,
+                border: "1px solid #ddd",
+              }}
             />
           </label>
 
@@ -82,7 +101,12 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #ddd" }}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 6,
+                border: "1px solid #ddd",
+              }}
             />
           </label>
 
@@ -96,7 +120,13 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
             <button
               type="submit"
               disabled={loading}
-              style={{ padding: "8px 12px", borderRadius: 6, background: "#2563eb", color: "white", border: "none" }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+              }}
             >
               {loading ? "Signing in…" : "Sign in"}
             </button>
@@ -104,7 +134,12 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
             <button
               type="button"
               onClick={() => (window.location.href = "/")}
-              style={{ padding: "8px 12px", borderRadius: 6, background: "#f3f4f6", border: "1px solid #e5e7eb" }}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 6,
+                background: "#f3f4f6",
+                border: "1px solid #e5e7eb",
+              }}
             >
               Cancel
             </button>
@@ -112,7 +147,9 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
         </form>
 
         <div style={{ marginTop: 14, fontSize: 13, color: "#555" }}>
-          <div>Don&apos;t have an account? <a href="/register">Register</a></div>
+          <div>
+            Don&apos;t have an account? <a href="/register">Register</a>
+          </div>
           <div style={{ marginTop: 6 }}>
             Development note: form posts to <code>{apiBase}/v1/auth/login</code>
           </div>

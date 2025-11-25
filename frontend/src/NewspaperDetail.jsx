@@ -2,7 +2,9 @@ import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 
-export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000" }) {
+export default function NewspaperDetail({
+  apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+}) {
   const [newspaper, setNewspaper] = useState(null);
   const [attached, setAttached] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,9 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
     setSearching(true);
     t = setTimeout(async () => {
       try {
-        const res = await fetch(`${apiBase}/v1/articles/?q=${encodeURIComponent(searchQ)}`);
+        const res = await fetch(
+          `${apiBase}/v1/articles/?q=${encodeURIComponent(searchQ)}`,
+        );
         if (!res.ok) {
           setSearchResults([]);
         } else {
@@ -91,7 +95,10 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
 
   async function attachArticle(articleId) {
     try {
-      const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles/${articleId}`, { method: "POST", headers: authHeaders() });
+      const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles/${articleId}`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
         throw new Error(b.detail || `Attach failed (${res.status})`);
@@ -115,7 +122,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
         body: JSON.stringify({ title: aTitle, content: aContent, url: aUrl }),
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.detail || `Create article failed (${res.status})`);
+      if (!res.ok)
+        throw new Error(body.detail || `Create article failed (${res.status})`);
       setAttached((prev) => [body, ...prev]);
       setATitle("");
       setAContent("");
@@ -131,7 +139,10 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
     // in the newspaper detail context, "delete" means detach from this newspaper
     if (!window.confirm("Remove this article from the newspaper?")) return;
     try {
-      const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles/${articleId}`, { method: "DELETE", headers: authHeaders() });
+      const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles/${articleId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Failed to remove article (${res.status})`);
       const body = await res.json().catch(() => null);
       console.error("Failed to remove article:", body);
@@ -144,7 +155,11 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
 
   async function patchArticle(articleId, patch) {
     try {
-      const res = await fetch(`${apiBase}/v1/articles/${articleId}`, { method: "PATCH", headers: authHeaders(true), body: JSON.stringify(patch) });
+      const res = await fetch(`${apiBase}/v1/articles/${articleId}`, {
+        method: "PATCH",
+        headers: authHeaders(true),
+        body: JSON.stringify(patch),
+      });
       if (!res.ok) {
         const b = await res.json().catch(() => ({}));
         throw new Error(b.detail || `Update failed (${res.status})`);
@@ -157,9 +172,13 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
   }
 
   async function deleteArticlePermanently(articleId) {
-    if (!window.confirm("Delete this article permanently? This cannot be undone.")) return;
+    if (!window.confirm("Delete this article permanently? This cannot be undone."))
+      return;
     try {
-      const res = await fetch(`${apiBase}/v1/articles/${articleId}`, { method: "DELETE", headers: authHeaders() });
+      const res = await fetch(`${apiBase}/v1/articles/${articleId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       // remove from attached
       setAttached((prev) => prev.filter((a) => a.id !== articleId));
@@ -172,7 +191,10 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
 
   return (
     <div style={{ padding: 20 }}>
-      <button onClick={() => (window.location.href = "/newspapers")} style={{ marginBottom: 12 }}>
+      <button
+        onClick={() => (window.location.href = "/newspapers")}
+        style={{ marginBottom: 12 }}
+      >
         ← Back
       </button>
       {loading ? (
@@ -186,12 +208,18 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
 
           <section style={{ marginTop: 18 }}>
             <h3>Attached articles</h3>
-                {attached.length === 0 ? (
+            {attached.length === 0 ? (
               <div style={{ color: "#666" }}>No articles attached.</div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {attached.map((a) => (
-                  <ArticleEditor key={a.id} article={a} onDelete={deleteArticle} onSave={patchArticle} onDeletePermanent={deleteArticlePermanently} />
+                  <ArticleEditor
+                    key={a.id}
+                    article={a}
+                    onDelete={deleteArticle}
+                    onSave={patchArticle}
+                    onDeletePermanent={deleteArticlePermanently}
+                  />
                 ))}
               </div>
             )}
@@ -202,18 +230,59 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
             <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
               <label style={{ display: "block", marginBottom: 8 }}>
                 <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
-                <input required value={aTitle} onChange={(e) => setATitle(e.target.value)} style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
+                <input
+                  required
+                  value={aTitle}
+                  onChange={(e) => setATitle(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #ddd",
+                  }}
+                />
               </label>
               <label style={{ display: "block", marginBottom: 8 }}>
                 <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
-                <textarea value={aContent} onChange={(e) => setAContent(e.target.value)} rows={6} style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
+                <textarea
+                  value={aContent}
+                  onChange={(e) => setAContent(e.target.value)}
+                  rows={6}
+                  style={{
+                    width: "100%",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #ddd",
+                  }}
+                />
               </label>
               <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>Original URL (optional)</div>
-                <input value={aUrl} onChange={(e) => setAUrl(e.target.value)} style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
+                <div style={{ fontSize: 13, marginBottom: 6 }}>
+                  Original URL (optional)
+                </div>
+                <input
+                  value={aUrl}
+                  onChange={(e) => setAUrl(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 8,
+                    borderRadius: 6,
+                    border: "1px solid #ddd",
+                  }}
+                />
               </label>
               <div style={{ display: "flex", gap: 8 }}>
-                <button type="submit" disabled={creatingArticle} style={{ padding: "8px 12px", background: "#16a34a", color: "white", border: "none", borderRadius: 6 }}>
+                <button
+                  type="submit"
+                  disabled={creatingArticle}
+                  style={{
+                    padding: "8px 12px",
+                    background: "#16a34a",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 6,
+                  }}
+                >
                   {creatingArticle ? "Creating…" : "Create article"}
                 </button>
               </div>
@@ -223,19 +292,58 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
           <section style={{ marginTop: 24 }}>
             <h3>Attach existing articles</h3>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input placeholder="Search articles to attach" value={searchQ} onChange={(e) => setSearchQ(e.target.value)} style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid #ddd" }} />
-              <div style={{ alignSelf: "center", color: "#666" }}>{searching ? "Searching…" : ""}</div>
+              <input
+                placeholder="Search articles to attach"
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1px solid #ddd",
+                }}
+              />
+              <div style={{ alignSelf: "center", color: "#666" }}>
+                {searching ? "Searching…" : ""}
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 12,
+              }}
+            >
               {searchResults.map((a) => (
-                <div key={a.id} style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}>
+                <div
+                  key={a.id}
+                  style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}
+                >
                   <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: "#555", marginTop: 6 }}>{a.content ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "") : ""}</div>
+                  <div style={{ color: "#555", marginTop: 6 }}>
+                    {a.content
+                      ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "")
+                      : ""}
+                  </div>
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button onClick={() => attachArticle(a.id)} style={{ padding: "6px 8px", borderRadius: 6, background: "#2563eb", color: "white", border: "none" }}>
+                    <button
+                      onClick={() => attachArticle(a.id)}
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: 6,
+                        background: "#2563eb",
+                        color: "white",
+                        border: "none",
+                      }}
+                    >
                       Attach
                     </button>
-                    <a href={a.url || "#"} target="_blank" rel="noreferrer" style={{ color: "#2563eb", alignSelf: "center" }}>
+                    <a
+                      href={a.url || "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: "#2563eb", alignSelf: "center" }}
+                    >
                       View
                     </a>
                   </div>
@@ -277,25 +385,114 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
     <div style={{ border: "1px solid #eee", padding: 12, borderRadius: 8 }}>
       {editing ? (
         <div>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #ddd" }} />
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={4} style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #ddd", marginTop: 8 }} />
-          <input value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #ddd", marginTop: 8 }} />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 6,
+              border: "1px solid #ddd",
+            }}
+          />
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={4}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 6,
+              border: "1px solid #ddd",
+              marginTop: 8,
+            }}
+          />
+          <input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 6,
+              border: "1px solid #ddd",
+              marginTop: 8,
+            }}
+          />
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button onClick={save} disabled={saving} style={{ padding: "6px 8px", borderRadius: 6, background: "#16a34a", color: "white", border: "none" }}>{saving ? "Saving…" : "Save"}</button>
-            <button onClick={() => { setEditing(false); setTitle(article.title); setContent(article.content || ""); setUrl(article.url || ""); }} style={{ padding: "6px 8px", borderRadius: 6 }}>Cancel</button>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{
+                padding: "6px 8px",
+                borderRadius: 6,
+                background: "#16a34a",
+                color: "white",
+                border: "none",
+              }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setTitle(article.title);
+                setContent(article.content || "");
+                setUrl(article.url || "");
+              }}
+              style={{ padding: "6px 8px", borderRadius: 6 }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       ) : (
         <div>
           <div style={{ fontWeight: 700 }}>{article.title}</div>
-          <div style={{ color: "#555", marginTop: 6 }}>{previewText(article.content, 160, "No description")}</div>
+          <div style={{ color: "#555", marginTop: 6 }}>
+            {previewText(article.content, 160, "No description")}
+          </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <a href={article.url || "#"} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>View</a>
-            <button onClick={() => setEditing(true)} style={{ padding: "6px 8px", borderRadius: 6 }}>Edit</button>
-            <button onClick={() => onDelete(article.id)} style={{ padding: "6px 8px", borderRadius: 6, background: "#ef4444", color: "white", border: "none" }}>Remove</button>
-            {Number(localStorage.getItem("user_id")) === article.owner_id && onDeletePermanent && (
-              <button onClick={() => onDeletePermanent(article.id)} style={{ padding: "6px 8px", borderRadius: 6, background: "#b91c1c", color: "white", border: "none" }}>Delete permanently</button>
-            )}
+            <a
+              href={article.url || "#"}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#2563eb" }}
+            >
+              View
+            </a>
+            <button
+              onClick={() => setEditing(true)}
+              style={{ padding: "6px 8px", borderRadius: 6 }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => onDelete(article.id)}
+              style={{
+                padding: "6px 8px",
+                borderRadius: 6,
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+              }}
+            >
+              Remove
+            </button>
+            {Number(localStorage.getItem("user_id")) === article.owner_id &&
+              onDeletePermanent && (
+                <button
+                  onClick={() => onDeletePermanent(article.id)}
+                  style={{
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    background: "#b91c1c",
+                    color: "white",
+                    border: "none",
+                  }}
+                >
+                  Delete permanently
+                </button>
+              )}
           </div>
         </div>
       )}

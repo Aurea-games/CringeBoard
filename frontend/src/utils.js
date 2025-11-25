@@ -11,7 +11,8 @@ export function isOnlyUrl(text) {
   if (/^(https?:\/\/|www\.)\S+$/i.test(trimmed)) return true;
 
   // also allow variants like "Article URL: https://..." or "Comments URL: www..."
-  if (/^(?:article url:|comments url:)\s*(https?:\/\/|www\.)\S+$/i.test(trimmed)) return true;
+  if (/^(?:article url:|comments url:)\s*(https?:\/\/|www\.)\S+$/i.test(trimmed))
+    return true;
 
   return false;
 }
