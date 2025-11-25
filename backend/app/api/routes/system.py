@@ -17,4 +17,3 @@ def healthz():
 
 
 __all__ = ["router"]
-

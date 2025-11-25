@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // Minimal Vite config; plugins left empty to keep deps small.
 export default defineConfig({
@@ -8,5 +8,4 @@ export default defineConfig({
     host: true,
     port: 3000,
   },
-})
-
+});

@@ -47,6 +47,9 @@ services:
             SECRET_KEY: ${SECRET_KEY:-change-me}
             ENV: ${ENV:-development}
             CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+            FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
+            FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
+            RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
         ports:
             - "${API_PORT:-8000}:8000"
         command: uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -82,6 +85,9 @@ services:
         environment:
             DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cringe}:${POSTGRES_PASSWORD:-cringe}@db:5432/${POSTGRES_DB:-cringeboard}
             REDIS_URL: redis://redis:6379/0
+            FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
+            FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
+            RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
         command: python -m app.scheduler
 
     pgadmin:

@@ -103,7 +103,7 @@ Pour repartir « propre », ajoutez `-v` à `down` (supprime aussi les volumes).
 
 **pgAdmin ne voit pas Postgres**: vérifiez que `db` est healthy (`docker compose ps`), puis re-tentez. Hôte doit être `db` (et non `localhost`).
 
-**Erreur psycopg2 / Python 3.13**: le projet utilise `psycopg[binary]` (v3) et `postgresql+psycopg://` dans `DATABASE_URL` pour compatibilité avec Python 3.13.
+**Erreurs psycopg2**: le projet utilise `psycopg[binary]` (v3) et `postgresql+psycopg://` dans `DATABASE_URL` pour rester compatible avec les versions modernes de Python (3.12+).
 
 **Changements d'images "latest"/"alpine"**: un `build --no-cache` peut être nécessaire après mise à jour des bases images.
 

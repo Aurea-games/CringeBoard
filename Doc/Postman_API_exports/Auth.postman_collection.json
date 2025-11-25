@@ -1,0 +1,257 @@
+{
+	"info": {
+		"_postman_id": "f37d3957-1cef-47c9-a263-c8dd6d4a6bf8",
+		"name": "Auth",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "20900573"
+	},
+	"item": [
+		{
+			"name": "Register",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test that response status code is 201",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Test that response JSON contains required properties",
+							"pm.test(\"Response has access_token, refresh_token, and token_type\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"access_token\");",
+							"    pm.expect(jsonData).to.have.property(\"refresh_token\");",
+							"    pm.expect(jsonData).to.have.property(\"token_type\");",
+							"});",
+							"",
+							"// Save refresh_token to environment variable and test",
+							"pm.test(\"refresh_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('REFRESH_TOKEN', jsonData.refresh_token);",
+							"    pm.expect(pm.environment.get('REFRESH_TOKEN')).to.eql(jsonData.refresh_token);",
+							"});",
+							"",
+							"// Save access_token to environment variable and test",
+							"pm.test(\"access_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('ACCESS_TOKEN', jsonData.access_token);",
+							"    pm.expect(pm.environment.get('ACCESS_TOKEN')).to.eql(jsonData.access_token);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"{{VALID_EMAIL}}\",\n  \"password\": \"{{VALID_PASSWORD}}\",\n  \"confirm_password\": \"{{VALID_PASSWORD}}\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/auth/register",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"auth",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test that response status code is 201",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Test that response JSON contains required properties",
+							"pm.test(\"Response has access_token, refresh_token, and token_type\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"access_token\");",
+							"    pm.expect(jsonData).to.have.property(\"refresh_token\");",
+							"    pm.expect(jsonData).to.have.property(\"token_type\");",
+							"});",
+							"",
+							"// Save refresh_token to environment variable and test",
+							"pm.test(\"refresh_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('REFRESH_TOKEN', jsonData.refresh_token);",
+							"    pm.expect(pm.environment.get('REFRESH_TOKEN')).to.eql(jsonData.refresh_token);",
+							"});",
+							"",
+							"// Save access_token to environment variable and test",
+							"pm.test(\"access_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('ACCESS_TOKEN', jsonData.access_token);",
+							"    pm.expect(pm.environment.get('ACCESS_TOKEN')).to.eql(jsonData.access_token);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"{{VALID_EMAIL}}\",\n  \"password\": \"{{VALID_PASSWORD}}\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/auth/login",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ACCESS_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/auth/users/me",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"auth",
+						"users",
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Refresh",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test that response status code is 201",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Test that response JSON contains required properties",
+							"pm.test(\"Response has access_token, refresh_token, and token_type\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"access_token\");",
+							"    pm.expect(jsonData).to.have.property(\"refresh_token\");",
+							"    pm.expect(jsonData).to.have.property(\"token_type\");",
+							"});",
+							"",
+							"// Save refresh_token to environment variable and test",
+							"pm.test(\"refresh_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('REFRESH_TOKEN', jsonData.refresh_token);",
+							"    pm.expect(pm.environment.get('REFRESH_TOKEN')).to.eql(jsonData.refresh_token);",
+							"});",
+							"",
+							"// Save access_token to environment variable and test",
+							"pm.test(\"access_token is saved to environment variable\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.environment.set('ACCESS_TOKEN', jsonData.access_token);",
+							"    pm.expect(pm.environment.get('ACCESS_TOKEN')).to.eql(jsonData.access_token);",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"refresh_token\": \"{{REFRESH_TOKEN}}\"\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/auth/refresh",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"auth",
+						"refresh"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
