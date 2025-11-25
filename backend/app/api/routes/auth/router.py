@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import delete, login, refresh, register, profile
+from . import delete, login, profile, refresh, register
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 router.include_router(register.router)

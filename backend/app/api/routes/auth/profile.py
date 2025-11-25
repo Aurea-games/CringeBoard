@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from .dependencies import get_current_email, auth_repository
+from .dependencies import auth_repository, get_current_email
 
 router = APIRouter()
 
