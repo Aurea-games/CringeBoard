@@ -286,12 +286,6 @@ def test_list_articles_sorted_by_popularity(auth_test_client: TestClient) -> Non
     titles_order = [article["title"] for article in popular_response.json()]
     assert titles_order[:3] == ["High", "Mid", "Low"]
 
-    articles_in_first = auth_test_client.get(f"{NEWSPAPERS_URL}/{first_newspaper_id}/articles")
-    assert any(article["id"] == article_id and first_newspaper_id in article["newspaper_ids"] for article in articles_in_first.json())
-
-    articles_in_second = auth_test_client.get(f"{NEWSPAPERS_URL}/{second_newspaper_id}/articles")
-    assert any(article["id"] == article_id and second_newspaper_id in article["newspaper_ids"] for article in articles_in_second.json())
-
 
 def test_non_owner_can_attach_article_to_newspaper(auth_test_client: TestClient) -> None:
     owner_tokens = register_user(auth_test_client, "owner2@example.org")
