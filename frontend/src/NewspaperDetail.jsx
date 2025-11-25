@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 
 export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000" }) {
@@ -20,7 +21,7 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
     try {
       const m = window.location.pathname.match(/^\/newspapers\/(\d+)$/);
       return m ? Number(m[1]) : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   })();
@@ -30,12 +31,12 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       const token = localStorage.getItem("access_token");
       const base = token ? { Authorization: `Bearer ${token}` } : {};
       return json ? { ...base, "Content-Type": "application/json" } : base;
-    } catch (e) {
+    } catch {
       return json ? { "Content-Type": "application/json" } : {};
     }
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
@@ -49,17 +50,16 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       if (!r2.ok) throw new Error(`Failed to load articles (${r2.status})`);
       const a = await r2.json();
       setAttached(a || []);
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }
+  }, [apiBase, id]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [load]);
 
   // search existing articles to attach
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [searchQ]);
+  }, [searchQ, apiBase]);
 
   async function attachArticle(articleId) {
     try {
@@ -97,8 +97,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       }
       const j = await res.json();
       setAttached((prev) => [j, ...prev.filter((p) => p.id !== j.id)]);
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -119,8 +119,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       setATitle("");
       setAContent("");
       setAUrl("");
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setCreatingArticle(false);
     }
@@ -135,8 +135,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       const body = await res.json().catch(() => null);
       // update attached list: remove the article from attachments
       setAttached((prev) => prev.filter((a) => a.id !== articleId));
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -149,8 +149,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       }
       const updated = await res.json();
       setAttached((prev) => prev.map((a) => (a.id === articleId ? updated : a)));
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -161,8 +161,8 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       // remove from attached
       setAttached((prev) => prev.filter((a) => a.id !== articleId));
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -247,6 +247,10 @@ export default function NewspaperDetail({ apiBase = import.meta.env.VITE_API_BAS
   );
 }
 
+NewspaperDetail.propTypes = {
+  apiBase: PropTypes.string,
+};
+
 function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(article.title);
@@ -295,3 +299,16 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
     </div>
   );
 }
+
+ArticleEditor.propTypes = {
+  article: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    content: PropTypes.string,
+    url: PropTypes.string,
+    owner_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }).isRequired,
+  onDelete: PropTypes.func,
+  onSave: PropTypes.func,
+  onDeletePermanent: PropTypes.func,
+};

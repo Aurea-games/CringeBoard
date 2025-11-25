@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from "prop-types";
 
 export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000" }) {
   const [list, setList] = useState([]);
@@ -11,12 +12,12 @@ export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_
     try {
       const token = localStorage.getItem("access_token");
       return token ? { Authorization: `Bearer ${token}` } : {};
-    } catch (e) {
+    } catch {
       return {};
     }
   }
 
-  async function load(query) {
+  const load = useCallback(async (query) => {
     setLoading(true);
     setError(null);
     try {
@@ -29,13 +30,13 @@ export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_
       if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
       const j = await res.json();
       setList(j || []);
-    } catch (e) {
-      setError(e.message);
+    } catch (err) {
+      setError(err.message);
       setList([]);
     } finally {
       setLoading(false);
     }
-  }
+  }, [apiBase]);
 
   useEffect(() => {
     let t = null;
@@ -44,11 +45,11 @@ export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_
       load(q).finally(() => setSearching(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, load]);
 
   useEffect(() => {
     load("");
-  }, []);
+  }, [load]);
 
   async function handleDelete(id) {
     if (!window.confirm("Delete this newspaper? This cannot be undone.")) return;
@@ -104,6 +105,10 @@ export default function NewspaperList({ apiBase = import.meta.env.VITE_API_BASE_
     </div>
   );
 }
+
+NewspaperList.propTypes = {
+  apiBase: PropTypes.string,
+};
 
 function NewspaperCard({ newspaper, onDelete, onPatch }) {
   const [editing, setEditing] = useState(false);

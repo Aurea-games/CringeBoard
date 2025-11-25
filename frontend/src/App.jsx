@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 import Login from "./Login.jsx";
 import Register from "./Register.jsx";
@@ -18,7 +19,7 @@ function Header({ onSearch }) {
       const e = localStorage.getItem("user_email");
       setLoggedIn(!!token);
       setEmail(e || null);
-    } catch (e) {
+    } catch {
       setLoggedIn(false);
     }
   }, []);
@@ -33,6 +34,8 @@ function Header({ onSearch }) {
     }
     window.location.href = "/";
   }
+
+
 
   function goLogin() {
     window.location.href = "/login";
@@ -159,15 +162,19 @@ function ArticleCard({ article }) {
   );
 }
 
+ArticleCard.propTypes = {
+  article: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    title: PropTypes.string,
+    content: PropTypes.string,
+    url: PropTypes.string,
+    owner_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }).isRequired,
+};
+
 export default function App() {
-  // simple route handling: if the path is /login or /register render the auth pages
-  if (typeof window !== "undefined") {
-    if (window.location.pathname === "/login") return <Login apiBase={apiBase} />;
-    if (window.location.pathname === "/register") return <Register apiBase={apiBase} />;
-    if (window.location.pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
-    if (window.location.pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
-    if (/^\/newspapers\/\d+$/.test(window.location.pathname)) return <NewspaperDetail apiBase={apiBase} />;
-  }
+  // read pathname early (not a hook) so hooks come next in consistent order
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,6 +249,13 @@ export default function App() {
   // server-side search is used; displayed articles come directly from the server
   const filtered = articles;
 
+  // route dispatching (hooks already declared above)
+  if (pathname === "/login") return <Login apiBase={apiBase} />;
+  if (pathname === "/register") return <Register apiBase={apiBase} />;
+  if (pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
+  if (pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
+  if (/^\/newspapers\/\d+$/.test(pathname)) return <NewspaperDetail apiBase={apiBase} />;
+
   return (
     <div style={{ fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", padding: 20 }}>
       <Header onSearch={setQuery} />
@@ -276,6 +290,10 @@ export default function App() {
     </div>
   );
 }
+
+Header.propTypes = {
+  onSearch: PropTypes.func,
+};
 
 const styles = {
   header: {

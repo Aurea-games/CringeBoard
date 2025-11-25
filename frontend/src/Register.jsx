@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 
 export default function Register({ apiBase = "http://localhost:8000" }) {
   const [email, setEmail] = useState("");
@@ -41,7 +42,7 @@ export default function Register({ apiBase = "http://localhost:8000" }) {
           localStorage.setItem("access_token", body.access_token);
           localStorage.setItem("user_email", email);
           if (body.refresh_token) localStorage.setItem("refresh_token", body.refresh_token);
-        } catch (e) {
+        } catch {
           // ignore storage failures
         }
         // fetch authenticated user info to store user id
@@ -54,7 +55,7 @@ export default function Register({ apiBase = "http://localhost:8000" }) {
             if (me?.id) localStorage.setItem("user_id", String(me.id));
             if (me?.email) localStorage.setItem("user_email", me.email);
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
         window.location.href = "/";
@@ -141,3 +142,7 @@ export default function Register({ apiBase = "http://localhost:8000" }) {
     </div>
   );
 }
+
+Register.propTypes = {
+  apiBase: PropTypes.string,
+};

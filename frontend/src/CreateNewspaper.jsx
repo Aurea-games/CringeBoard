@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 
 export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000" }) {
@@ -27,7 +28,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
     try {
       const token = localStorage.getItem("access_token");
       return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
-    } catch (e) {
+    } catch {
       return { "Content-Type": "application/json" };
     }
   }
@@ -57,19 +58,19 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
     }
   }
 
-  async function loadAttached(id) {
+  const loadAttached = useCallback(async (id) => {
     setLoadingAttached(true);
     try {
       const res = await fetch(`${apiBase}/v1/newspapers/${id}/articles`, { headers: authHeaders() });
       if (!res.ok) return;
       const j = await res.json();
       setAttached(j || []);
-    } catch (e) {
+    } catch {
       // ignore
     } finally {
       setLoadingAttached(false);
     }
-  }
+  }, [apiBase]);
 
   // search existing articles (debounced)
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [searchQ]);
+  }, [searchQ, apiBase]);
 
   async function attachArticle(articleId) {
     if (!newspaper) return;
@@ -151,7 +152,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
   // if newspaper created, load its attached articles
   useEffect(() => {
     if (newspaper) loadAttached(newspaper.id);
-  }, [newspaper]);
+  }, [newspaper, loadAttached]);
 
   return (
     <div style={{ padding: 20, fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" }}>
@@ -256,3 +257,7 @@ export default function CreateNewspaper({ apiBase = import.meta.env.VITE_API_BAS
     </div>
   );
 }
+
+CreateNewspaper.propTypes = {
+  apiBase: PropTypes.string,
+};
