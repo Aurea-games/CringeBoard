@@ -338,6 +338,19 @@ class AggregatorRepository:
             )
             return self.fetch_article(cur, article_id)
 
+    def remove_article_favorite(self, user_id: int, article_id: int) -> bool:
+        """Removes a favorite record. Returns True if a record was deleted, False otherwise."""
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM article_favorites
+                WHERE user_id = %s AND article_id = %s
+                """,
+                (user_id, article_id),
+            )
+            # Check if any row was affected
+            return cur.rowcount > 0
+
     def find_article_by_url(self, url: str) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
@@ -444,3 +457,45 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM articles WHERE id = %s", (article_id,))
             return cur.rowcount > 0
+    
+    def get_user_favorites(self, user_id: int) -> list[ArticleRow]:
+        sql = """
+            SELECT
+                a.id,
+                a.title,
+                a.content,
+                a.url,
+                a.owner_id,
+                COALESCE(f.popularity, 0) AS popularity,
+                a.created_at,
+                a.updated_at,
+                COALESCE(
+                    ARRAY(
+                        SELECT na.newspaper_id
+                        FROM newspaper_articles AS na
+                        WHERE na.article_id = a.id
+                        ORDER BY na.newspaper_id
+                    ),
+                    ARRAY[]::INTEGER[]
+                ) AS newspaper_ids
+            FROM articles AS a
+            INNER JOIN article_favorites AS af ON af.article_id = a.id
+            LEFT JOIN (
+                SELECT article_id, COUNT(*) AS popularity
+                FROM article_favorites
+                GROUP BY article_id
+            ) AS f ON f.article_id = a.id
+            WHERE af.user_id = %s
+            ORDER BY af.created_at DESC
+        """
+        
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(sql, (user_id,))
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result

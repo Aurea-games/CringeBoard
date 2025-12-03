@@ -46,6 +46,14 @@ def list_popular_articles(
         order_by_popularity=True,
     )
 
+@router.get(
+    "/favorite",
+    response_model=list[schemas.Article],
+)
+def list_my_favorites(
+    current_email: CurrentUserEmail,
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_user_favorites(current_email)
 
 @router.get(
     "/{article_id}",
@@ -65,6 +73,15 @@ def favorite_article(
 ) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.favorite_article(article_id, current_email)
 
+@router.delete(
+    "/{article_id}/favorite",
+    response_model=schemas.Article,
+)
+def unfavorite_article(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Article:
+    return aggregator_dependencies.aggregator_service.unfavorite_article(article_id, current_email)
 
 @router.patch(
     "/{article_id}",

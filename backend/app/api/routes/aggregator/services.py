@@ -226,6 +226,18 @@ class AggregatorService:
             raise self._ARTICLE_NOT_FOUND
         return schemas.Article.model_validate(record)
 
+    def unfavorite_article(self, article_id: int, user_email: str) -> schemas.Article:
+        user_id = self.get_user_id(user_email)
+        record = self._repository.get_article(article_id)
+        if record is None:
+            raise self._ARTICLE_NOT_FOUND
+
+        self._repository.remove_article_favorite(user_id, article_id)
+        
+        # Return the updated article object (which will include the new popularity count)
+        updated_record = self._repository.get_article(article_id, include_popularity=True)
+        return schemas.Article.model_validate(updated_record)
+
     def update_article(
         self,
         article_id: int,
@@ -290,3 +302,8 @@ class AggregatorService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"You do not have permission to {action}.",
             )
+
+    def list_user_favorites(self, user_email: str) -> list[schemas.Article]:
+        user_id = self.get_user_id(user_email)
+        rows = self._repository.get_user_favorites(user_id)
+        return [schemas.Article.model_validate(row) for row in rows]
