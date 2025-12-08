@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import os
-import psycopg
 
 os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/test-db")
 
+import psycopg
+from app.aggregator.scrapers.base import BaseRSSScraper
+from app.aggregator.scrapers.flipboard import FlipboardAccountScraper, FlipboardMagazineScraper
+
 
 class DummyCursor:
-    def __enter__(self) -> "DummyCursor":
+    def __enter__(self) -> DummyCursor:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -24,7 +27,7 @@ class DummyCursor:
 
 
 class DummyConnection:
-    def __enter__(self) -> "DummyConnection":
+    def __enter__(self) -> DummyConnection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -48,9 +51,6 @@ def fake_connect(*args, **kwargs) -> DummyConnection:
 
 
 psycopg.connect = fake_connect  # type: ignore[assignment]
-
-from app.aggregator.scrapers.base import BaseRSSScraper
-from app.aggregator.scrapers.flipboard import FlipboardAccountScraper, FlipboardMagazineScraper
 
 
 class DummyResponse:

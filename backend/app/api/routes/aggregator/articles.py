@@ -75,6 +75,41 @@ def favorite_article(
     return aggregator_dependencies.aggregator_service.favorite_article(article_id, current_email)
 
 
+@router.delete(
+    "/{article_id}/favorite",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def unfavorite_article(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> Response:
+    aggregator_dependencies.aggregator_service.unfavorite_article(article_id, current_email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{article_id}/read-later",
+    response_model=schemas.Article,
+)
+def mark_article_for_later(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Article:
+    return aggregator_dependencies.aggregator_service.save_article_for_later(article_id, current_email)
+
+
+@router.delete(
+    "/{article_id}/read-later",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def unmark_article_for_later(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> Response:
+    aggregator_dependencies.aggregator_service.remove_article_from_read_later(article_id, current_email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.patch(
     "/{article_id}",
     response_model=schemas.Article,

@@ -251,7 +251,7 @@ def test_list_articles_sorted_by_popularity(auth_test_client: TestClient) -> Non
     fan_two = register_user(auth_test_client, "fan4@example.org")
 
     newspaper_id = create_newspaper(auth_test_client, author_tokens["access_token"])
-    low_pop = auth_test_client.post(
+    auth_test_client.post(
         f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
         json={"title": "Low", "content": "low"},
         headers=auth_headers(author_tokens["access_token"]),
@@ -313,3 +313,96 @@ def test_non_owner_can_attach_article_to_newspaper(auth_test_client: TestClient)
     assert attach_response.status_code == 200
     attached = attach_response.json()
     assert other_newspaper_id in attached["newspaper_ids"]
+
+
+def test_user_can_manage_favorites_collection(auth_test_client: TestClient) -> None:
+    author_tokens = register_user(auth_test_client, "favorites-author@example.org")
+    fan_tokens = register_user(auth_test_client, "favorites-fan@example.org")
+
+    newspaper_id = create_newspaper(auth_test_client, author_tokens["access_token"], title="Favorites Daily")
+    article = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={
+            "title": "Favorite Me",
+            "content": "Save this article.",
+        },
+        headers=auth_headers(author_tokens["access_token"]),
+    ).json()
+    article_id = article["id"]
+
+    favorite_response = auth_test_client.post(
+        "/v1/me/favorites",
+        json={"articleId": article_id},
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert favorite_response.status_code == 201
+    assert favorite_response.json()["popularity"] == 1
+
+    favorites_list = auth_test_client.get(
+        "/v1/me/favorites",
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert favorites_list.status_code == 200
+    favorites = favorites_list.json()
+    assert len(favorites) == 1
+    assert favorites[0]["id"] == article_id
+
+    delete_response = auth_test_client.delete(
+        f"/v1/me/favorites/{article_id}",
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert delete_response.status_code == 204
+
+    empty_list = auth_test_client.get(
+        "/v1/me/favorites",
+        headers=auth_headers(fan_tokens["access_token"]),
+    )
+    assert empty_list.status_code == 200
+    assert empty_list.json() == []
+
+    refreshed = auth_test_client.get(f"{ARTICLES_URL}/{article_id}")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["popularity"] == 0
+
+
+def test_user_can_manage_read_later_list(auth_test_client: TestClient) -> None:
+    tokens = register_user(auth_test_client, "reader@example.org")
+    newspaper_id = create_newspaper(auth_test_client, tokens["access_token"], title="Read Later Times")
+    article = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/articles",
+        json={
+            "title": "To Read Soon",
+            "content": "Mark for later reading.",
+        },
+        headers=auth_headers(tokens["access_token"]),
+    ).json()
+
+    add_response = auth_test_client.post(
+        "/v1/me/read-later",
+        json={"articleId": article["id"]},
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert add_response.status_code == 201
+    assert add_response.json()["id"] == article["id"]
+
+    list_response = auth_test_client.get(
+        "/v1/me/read-later",
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert list_response.status_code == 200
+    saved = list_response.json()
+    assert len(saved) == 1
+    assert saved[0]["id"] == article["id"]
+
+    remove_response = auth_test_client.delete(
+        f"/v1/me/read-later/{article['id']}",
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert remove_response.status_code == 204
+
+    confirm_empty = auth_test_client.get(
+        "/v1/me/read-later",
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert confirm_empty.status_code == 200
+    assert confirm_empty.json() == []

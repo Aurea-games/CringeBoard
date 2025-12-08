@@ -402,6 +402,124 @@ class AggregatorRepository:
             )
             return self.fetch_article(cur, article_id)
 
+    def remove_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM article_favorites
+                WHERE user_id = %s AND article_id = %s
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def list_favorite_articles(self, user_id: int) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.content,
+                    a.url,
+                    a.owner_id,
+                    COALESCE(f.popularity, 0) AS popularity,
+                    a.created_at,
+                    a.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na.newspaper_id
+                            FROM newspaper_articles AS na
+                            WHERE na.article_id = a.id
+                            ORDER BY na.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM articles AS a
+                JOIN article_favorites AS af ON af.article_id = a.id AND af.user_id = %s
+                LEFT JOIN (
+                    SELECT article_id, COUNT(*) AS popularity
+                    FROM article_favorites
+                    GROUP BY article_id
+                ) AS f ON f.article_id = a.id
+                ORDER BY af.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
+
+    def add_read_later(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO article_read_later (user_id, article_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def remove_read_later(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM article_read_later
+                WHERE user_id = %s AND article_id = %s
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def list_read_later_articles(self, user_id: int) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.content,
+                    a.url,
+                    a.owner_id,
+                    COALESCE(f.popularity, 0) AS popularity,
+                    a.created_at,
+                    a.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na.newspaper_id
+                            FROM newspaper_articles AS na
+                            WHERE na.article_id = a.id
+                            ORDER BY na.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM articles AS a
+                JOIN article_read_later AS arl ON arl.article_id = a.id AND arl.user_id = %s
+                LEFT JOIN (
+                    SELECT article_id, COUNT(*) AS popularity
+                    FROM article_favorites
+                    GROUP BY article_id
+                ) AS f ON f.article_id = a.id
+                ORDER BY arl.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
+
     def find_article_by_url(self, url: str) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
