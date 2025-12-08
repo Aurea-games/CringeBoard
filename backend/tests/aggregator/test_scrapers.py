@@ -5,8 +5,6 @@ import os
 os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/test-db")
 
 import psycopg
-from app.aggregator.scrapers.base import BaseRSSScraper
-from app.aggregator.scrapers.flipboard import FlipboardAccountScraper, FlipboardMagazineScraper
 
 
 class DummyCursor:
@@ -51,6 +49,9 @@ def fake_connect(*args, **kwargs) -> DummyConnection:
 
 
 psycopg.connect = fake_connect  # type: ignore[assignment]
+
+from app.aggregator.scrapers.base import BaseRSSScraper  # noqa: E402
+from app.aggregator.scrapers.flipboard import FlipboardAccountScraper, FlipboardMagazineScraper  # noqa: E402
 
 
 class DummyResponse:

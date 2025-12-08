@@ -8,8 +8,6 @@ from collections.abc import Iterable
 
 import psycopg
 import pytest
-from app.aggregator.feed import FeedAggregator, ScrapedArticle
-from tests.conftest import InMemoryAggregatorRepository, InMemoryAuthRepository, SimplePasswordHasher
 
 
 class DummyCursor:
@@ -54,6 +52,9 @@ def fake_connect(*args, **kwargs) -> DummyConnection:
 
 
 psycopg.connect = fake_connect  # type: ignore[assignment]
+
+from app.aggregator.feed import FeedAggregator, ScrapedArticle  # noqa: E402
+from tests.conftest import InMemoryAggregatorRepository, InMemoryAuthRepository, SimplePasswordHasher  # noqa: E402
 
 
 class DummyScraper:
