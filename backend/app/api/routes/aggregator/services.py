@@ -215,6 +215,12 @@ class AggregatorService:
             raise self._ARTICLE_NOT_FOUND
         return schemas.Article.model_validate(record)
 
+    def list_related_articles(self, article_id: int, limit: int = 10) -> list[schemas.Article]:
+        if self._repository.get_article(article_id) is None:
+            raise self._ARTICLE_NOT_FOUND
+        rows = self._repository.get_related_articles(article_id, limit=limit)
+        return [schemas.Article.model_validate(row) for row in rows]
+
     def favorite_article(self, article_id: int, user_email: str) -> schemas.Article:
         user_id = self.get_user_id(user_email)
         article = self._repository.get_article(article_id)
