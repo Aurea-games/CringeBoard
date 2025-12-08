@@ -54,6 +54,15 @@ def list_popular_articles(
 def get_article(article_id: int) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.get_article(article_id)
 
+@router.get(
+    "/{article_id}/related",
+    response_model=list[schemas.Article],
+)
+def list_related_articles(
+    article_id: int,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_related_articles(article_id, limit=limit)
 
 @router.post(
     "/{article_id}/favorite",
