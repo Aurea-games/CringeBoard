@@ -326,6 +326,70 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             return self.fetch_article(cur, article_id)
 
+    def get_related_articles(self, article_id: int, limit: int = 10) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH target_newspapers AS (
+                    SELECT na.newspaper_id
+                    FROM newspaper_articles AS na
+                    WHERE na.article_id = %s
+                ),
+                scored_related AS (
+                    SELECT
+                        a.id,
+                        a.title,
+                        a.content,
+                        a.url,
+                        a.owner_id,
+                        COALESCE(f.popularity, 0) AS popularity,
+                        a.created_at,
+                        a.updated_at,
+                        COUNT(DISTINCT na.newspaper_id) AS overlap_count
+                    FROM articles AS a
+                    JOIN newspaper_articles AS na ON na.article_id = a.id
+                    LEFT JOIN (
+                        SELECT article_id, COUNT(*) AS popularity
+                        FROM article_favorites
+                        GROUP BY article_id
+                    ) AS f ON f.article_id = a.id
+                    WHERE na.newspaper_id IN (SELECT newspaper_id FROM target_newspapers)
+                      AND a.id <> %s
+                    GROUP BY a.id, a.title, a.content, a.url, a.owner_id, a.created_at, a.updated_at, f.popularity
+                )
+                SELECT
+                    sr.id,
+                    sr.title,
+                    sr.content,
+                    sr.url,
+                    sr.owner_id,
+                    sr.popularity,
+                    sr.created_at,
+                    sr.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na2.newspaper_id
+                            FROM newspaper_articles AS na2
+                            WHERE na2.article_id = sr.id
+                            ORDER BY na2.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM scored_related AS sr
+                ORDER BY sr.overlap_count DESC, sr.popularity DESC, sr.created_at DESC
+                LIMIT %s
+                """,
+                (article_id, article_id, limit),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
+
     def add_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
