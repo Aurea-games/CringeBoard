@@ -4,6 +4,8 @@ REGISTER_URL = "/v1/auth/register"
 LOGIN_URL = "/v1/auth/login"
 REFRESH_URL = "/v1/auth/refresh"
 DELETE_URL = "/v1/auth/users/me"
+PREFERENCES_URL = "/v1/auth/users/me/preferences"
+PREFERENCES_HIDE_URL = "/v1/auth/users/me/preferences/hide-source"
 
 
 def register_user(client: TestClient, email: str, password: str) -> dict[str, str]:
@@ -161,3 +163,50 @@ def test_delete_requires_valid_authorization(auth_test_client: TestClient) -> No
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Authorization header missing."
+
+
+def auth_headers(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_preferences_default_and_update(auth_test_client: TestClient) -> None:
+    tokens = register_user(auth_test_client, "prefs@example.org", "StrongPass1")
+
+    default_response = auth_test_client.get(PREFERENCES_URL, headers=auth_headers(tokens["access_token"]))
+    assert default_response.status_code == 200
+    assert default_response.json() == {"theme": "light", "hidden_source_ids": []}
+
+    update_response = auth_test_client.put(
+        PREFERENCES_URL,
+        json={"theme": "dark", "hidden_source_ids": [1, 2]},
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["theme"] == "dark"
+    assert updated["hidden_source_ids"] == [1, 2]
+
+
+def test_preferences_hide_and_unhide_sources(auth_test_client: TestClient) -> None:
+    tokens = register_user(auth_test_client, "prefs2@example.org", "StrongPass1")
+    headers = auth_headers(tokens["access_token"])
+
+    hide_response = auth_test_client.post(
+        PREFERENCES_HIDE_URL,
+        json={"sourceId": 5},
+        headers=headers,
+    )
+    assert hide_response.status_code == 200
+    assert hide_response.json()["hidden_source_ids"] == [5]
+
+    hide_second = auth_test_client.post(
+        PREFERENCES_HIDE_URL,
+        json={"sourceId": 7},
+        headers=headers,
+    )
+    assert hide_second.status_code == 200
+    assert hide_second.json()["hidden_source_ids"] == [5, 7]
+
+    unhide_response = auth_test_client.delete(f"{PREFERENCES_HIDE_URL}/5", headers=headers)
+    assert unhide_response.status_code == 200
+    assert unhide_response.json()["hidden_source_ids"] == [7]
