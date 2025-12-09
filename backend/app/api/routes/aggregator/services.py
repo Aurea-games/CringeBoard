@@ -232,6 +232,43 @@ class AggregatorService:
             raise self._ARTICLE_NOT_FOUND
         return schemas.Article.model_validate(record)
 
+    def unfavorite_article(self, article_id: int, user_email: str) -> schemas.Article:
+        user_id = self.get_user_id(user_email)
+        if self._repository.get_article(article_id) is None:
+            raise self._ARTICLE_NOT_FOUND
+        record = self._repository.remove_article_favorite(user_id, article_id)
+        if record is None:
+            raise self._ARTICLE_NOT_FOUND
+        return schemas.Article.model_validate(record)
+
+    def list_favorite_articles(self, user_email: str) -> list[schemas.Article]:
+        user_id = self.get_user_id(user_email)
+        rows = self._repository.list_favorite_articles(user_id)
+        return [schemas.Article.model_validate(row) for row in rows]
+
+    def save_article_for_later(self, article_id: int, user_email: str) -> schemas.Article:
+        user_id = self.get_user_id(user_email)
+        if self._repository.get_article(article_id) is None:
+            raise self._ARTICLE_NOT_FOUND
+        record = self._repository.add_read_later(user_id, article_id)
+        if record is None:
+            raise self._ARTICLE_NOT_FOUND
+        return schemas.Article.model_validate(record)
+
+    def remove_article_from_read_later(self, article_id: int, user_email: str) -> schemas.Article:
+        user_id = self.get_user_id(user_email)
+        if self._repository.get_article(article_id) is None:
+            raise self._ARTICLE_NOT_FOUND
+        record = self._repository.remove_read_later(user_id, article_id)
+        if record is None:
+            raise self._ARTICLE_NOT_FOUND
+        return schemas.Article.model_validate(record)
+
+    def list_read_later_articles(self, user_email: str) -> list[schemas.Article]:
+        user_id = self.get_user_id(user_email)
+        rows = self._repository.list_read_later_articles(user_id)
+        return [schemas.Article.model_validate(row) for row in rows]
+
     def update_article(
         self,
         article_id: int,

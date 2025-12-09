@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Generator
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
+from collections.abc import Generator
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -43,7 +43,7 @@ class InMemoryAggregatorRepository:
         self._articles: dict[int, dict[str, object]] = {}
 
     def _now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def create_newspaper(self, owner_id: int, title: str, description: str | None) -> dict[str, object]:
         newspaper_id = self._next_newspaper_id
@@ -64,6 +64,10 @@ class InMemoryAggregatorRepository:
         clone = record.copy()
         clone["newspaper_ids"] = sorted(record.get("newspaper_ids", set()))
         clone["popularity"] = len(record.get("favorite_user_ids", set()))
+        clone.pop("favorite_user_ids", None)
+        clone.pop("favorite_timestamps", None)
+        clone.pop("read_later_user_ids", None)
+        clone.pop("read_later_timestamps", None)
         return clone
 
     def list_newspapers(self) -> list[dict[str, object]]:
@@ -156,7 +160,10 @@ class InMemoryAggregatorRepository:
                 articles = filtered_articles
 
         if order_by_popularity:
-            articles.sort(key=lambda item: (len(item.get("favorite_user_ids", set())), item["created_at"]), reverse=True)
+            articles.sort(
+                key=lambda item: (len(item.get("favorite_user_ids", set())), item["created_at"]),
+                reverse=True,
+            )
         else:
             articles.sort(key=lambda item: item["created_at"], reverse=True)
         return [self._clone_article(article) for article in articles]
@@ -182,6 +189,9 @@ class InMemoryAggregatorRepository:
             "updated_at": timestamp,
             "newspaper_ids": {newspaper_id},
             "favorite_user_ids": set(),
+            "favorite_timestamps": {},
+            "read_later_user_ids": set(),
+            "read_later_timestamps": {},
         }
         self._articles[article_id] = record
         return self._clone_article(record)
@@ -202,7 +212,50 @@ class InMemoryAggregatorRepository:
             return None
         favorites = record.setdefault("favorite_user_ids", set())
         favorites.add(user_id)
+        record.setdefault("favorite_timestamps", {})[user_id] = self._now()
         return self._clone_article(record)
+
+    def remove_article_favorite(self, user_id: int, article_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        record.setdefault("favorite_user_ids", set()).discard(user_id)
+        record.setdefault("favorite_timestamps", {}).pop(user_id, None)
+        return self._clone_article(record)
+
+    def list_favorite_articles(self, user_id: int) -> list[dict[str, object]]:
+        matches: list[tuple[datetime, dict[str, object]]] = []
+        for article in self._articles.values():
+            if user_id in article.get("favorite_user_ids", set()):
+                timestamp = article.get("favorite_timestamps", {}).get(user_id, article["created_at"])
+                matches.append((timestamp, article))
+        matches.sort(key=lambda item: item[0], reverse=True)
+        return [self._clone_article(article) for _, article in matches]
+
+    def add_read_later(self, user_id: int, article_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        record.setdefault("read_later_user_ids", set()).add(user_id)
+        record.setdefault("read_later_timestamps", {})[user_id] = self._now()
+        return self._clone_article(record)
+
+    def remove_read_later(self, user_id: int, article_id: int) -> dict[str, object] | None:
+        record = self._articles.get(article_id)
+        if record is None:
+            return None
+        record.setdefault("read_later_user_ids", set()).discard(user_id)
+        record.setdefault("read_later_timestamps", {}).pop(user_id, None)
+        return self._clone_article(record)
+
+    def list_read_later_articles(self, user_id: int) -> list[dict[str, object]]:
+        matches: list[tuple[datetime, dict[str, object]]] = []
+        for article in self._articles.values():
+            if user_id in article.get("read_later_user_ids", set()):
+                timestamp = article.get("read_later_timestamps", {}).get(user_id, article["created_at"])
+                matches.append((timestamp, article))
+        matches.sort(key=lambda item: item[0], reverse=True)
+        return [self._clone_article(article) for _, article in matches]
 
     def update_article(
         self,
@@ -319,7 +372,7 @@ class FakeAuthService:
         self._hasher = hasher
         self._token_generator = token_generator
 
-    def register_user(self, email: str, password: str) -> "TokenResponse":
+    def register_user(self, email: str, password: str) -> TokenResponse:
         self.ensure_email_allowed(email)
         if self._repository.email_exists(email):
             raise HTTPException(
@@ -330,7 +383,7 @@ class FakeAuthService:
         user_id = self._repository.create_user(email, password_hash)
         return self.issue_tokens(user_id)
 
-    def authenticate(self, email: str, password: str) -> "TokenResponse":
+    def authenticate(self, email: str, password: str) -> TokenResponse:
         credentials = self._repository.get_user_credentials(email)
         if not credentials:
             raise HTTPException(
@@ -360,7 +413,7 @@ class FakeAuthService:
                 detail="User not found.",
             )
 
-    def refresh_tokens(self, refresh_token: str) -> "TokenResponse":
+    def refresh_tokens(self, refresh_token: str) -> TokenResponse:
         normalized_token = refresh_token.strip()
         if not normalized_token:
             raise HTTPException(
@@ -382,7 +435,7 @@ class FakeAuthService:
                 detail="Registration with example.com emails is not allowed.",
             )
 
-    def issue_tokens(self, user_id: int) -> "TokenResponse":
+    def issue_tokens(self, user_id: int) -> TokenResponse:
         from app.api.routes.auth.schemas import TokenResponse
 
         access_token = self._token_generator(32)
@@ -399,7 +452,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     import psycopg
 
     class DummyCursor:
-        def __enter__(self) -> "DummyCursor":
+        def __enter__(self) -> DummyCursor:
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -409,7 +462,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
             return None
 
     class DummyConnection:
-        def __enter__(self) -> "DummyConnection":
+        def __enter__(self) -> DummyConnection:
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -433,9 +486,9 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost/test-db")
     monkeypatch.setattr(psycopg, "connect", fake_connect)
 
-    from app.api.routes.auth import delete, dependencies, login, refresh, register
     from app.api.routes.aggregator import dependencies as aggregator_dependencies
     from app.api.routes.aggregator.services import AggregatorService
+    from app.api.routes.auth import delete, dependencies, login, refresh, register
     from app.main import create_application
 
     repository = InMemoryAuthRepository()
