@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .validators import normalize_email
 
@@ -102,12 +102,15 @@ class PreferencesUpdate(BaseModel):
 class SourceToggleRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    source_id: int = Field(
-        ...,
-        gt=0,
-        validation_alias=AliasChoices("sourceId", "source_id"),
-        serialization_alias="sourceId",
-    )
+    source_id: Annotated[int, Field(gt=0)]
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_aliases(cls, data: object) -> object:
+        if isinstance(data, dict) and "sourceId" in data and "source_id" not in data:
+            data = dict(data)
+            data["source_id"] = data.pop("sourceId")
+        return data
 
 
 __all__ = [

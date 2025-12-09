@@ -121,3 +121,19 @@ def detach_existing_article(
         article_id,
         current_email,
     )
+
+
+@router.post(
+    "/{newspaper_id}/share",
+    response_model=schemas.Newspaper,
+)
+def share_newspaper(
+    newspaper_id: int,
+    payload: schemas.NewspaperShareRequest,
+    current_email: CurrentUserEmail,
+) -> schemas.Newspaper:
+    return aggregator_dependencies.aggregator_service.share_newspaper(
+        newspaper_id=newspaper_id,
+        owner_email=current_email,
+        make_public=payload.public,
+    )

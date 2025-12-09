@@ -54,6 +54,8 @@ class InMemoryAggregatorRepository:
             "title": title,
             "description": description,
             "owner_id": owner_id,
+            "is_public": False,
+            "public_token": None,
             "created_at": timestamp,
             "updated_at": timestamp,
         }
@@ -134,6 +136,26 @@ class InMemoryAggregatorRepository:
 
     def list_articles_for_newspaper(self, newspaper_id: int) -> list[dict[str, object]]:
         return self.search_articles(newspaper_id=newspaper_id)
+
+    def update_newspaper_publication(
+        self,
+        newspaper_id: int,
+        is_public: bool,
+        public_token: str | None,
+    ) -> dict[str, object] | None:
+        record = self._newspapers.get(newspaper_id)
+        if record is None:
+            return None
+        record["is_public"] = is_public
+        record["public_token"] = public_token
+        record["updated_at"] = self._now()
+        return record.copy()
+
+    def get_newspaper_by_token(self, token: str) -> dict[str, object] | None:
+        for record in self._newspapers.values():
+            if record.get("is_public") and record.get("public_token") == token:
+                return record.copy()
+        return None
 
     def search_articles(
         self,

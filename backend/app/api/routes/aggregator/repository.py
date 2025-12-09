@@ -24,8 +24,10 @@ class AggregatorRepository:
             "title": row[1],
             "description": row[2],
             "owner_id": row[3],
-            "created_at": row[4],
-            "updated_at": row[5],
+            "is_public": row[4],
+            "public_token": row[5],
+            "created_at": row[6],
+            "updated_at": row[7],
         }
 
     @staticmethod
@@ -56,7 +58,7 @@ class AggregatorRepository:
                 """
                 INSERT INTO newspapers (title, description, owner_id)
                 VALUES (%s, %s, %s)
-                RETURNING id, title, description, owner_id, created_at, updated_at
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
                 """,
                 (title, description, owner_id),
             )
@@ -88,7 +90,7 @@ class AggregatorRepository:
                 params.extend([pattern, pattern])
 
         sql = [
-            "SELECT id, title, description, owner_id, created_at, updated_at",
+            "SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at",
             "FROM newspapers",
         ]
         if clauses:
@@ -110,7 +112,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
                 FROM newspapers
                 WHERE owner_id = %s AND title = %s
                 """,
@@ -123,7 +125,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
                 FROM newspapers
                 WHERE id = %s
                 """,
@@ -160,7 +162,7 @@ class AggregatorRepository:
                 UPDATE newspapers
                 SET {set_clause}updated_at = NOW()
                 WHERE id = %s
-                RETURNING id, title, description, owner_id, created_at, updated_at
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
                 """,
                 tuple(params),
             )
@@ -171,6 +173,40 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM newspapers WHERE id = %s", (newspaper_id,))
             return cur.rowcount > 0
+
+    def update_newspaper_publication(
+        self,
+        newspaper_id: int,
+        is_public: bool,
+        public_token: str | None,
+    ) -> NewspaperRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE newspapers
+                SET is_public = %s,
+                    public_token = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                """,
+                (is_public, public_token, newspaper_id),
+            )
+            row = cur.fetchone()
+        return self.row_to_newspaper(row)
+
+    def get_newspaper_by_token(self, token: str) -> NewspaperRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                FROM newspapers
+                WHERE public_token = %s AND is_public = TRUE
+                """,
+                (token,),
+            )
+            row = cur.fetchone()
+        return self.row_to_newspaper(row)
 
     def list_articles_for_newspaper(self, newspaper_id: int) -> list[ArticleRow]:
         return self.search_articles(newspaper_id=newspaper_id)

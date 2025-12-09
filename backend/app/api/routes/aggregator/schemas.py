@@ -25,6 +25,9 @@ class Newspaper(BaseModel):
     title: str
     description: str | None
     owner_id: int
+    is_public: bool = False
+    public_token: str | None = None
+    public_url: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -61,3 +64,7 @@ class NewspaperDetail(Newspaper):
         base = Newspaper.model_validate(newspaper_data)
         article_models = [Article.model_validate(article) for article in articles]
         return cls(**base.model_dump(), articles=article_models)
+
+
+class NewspaperShareRequest(BaseModel):
+    public: bool
