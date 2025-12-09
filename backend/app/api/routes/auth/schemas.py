@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Literal
+
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .validators import normalize_email
 
@@ -81,4 +83,39 @@ class RefreshRequest(BaseModel):
     )
 
 
-__all__ = ["LoginRequest", "RegisterRequest", "TokenResponse", "RefreshRequest"]
+class Preferences(BaseModel):
+    theme: Literal["light", "dark"] = "light"
+    hidden_source_ids: list[int] = Field(default_factory=list, description="List of hidden source IDs.")
+
+
+class PreferencesUpdate(BaseModel):
+    theme: Literal["light", "dark"] | None = None
+    hidden_source_ids: list[int] | None = Field(default=None, description="Full replacement for hidden sources.")
+
+    @model_validator(mode="after")
+    def ensure_fields(self) -> "PreferencesUpdate":
+        if self.theme is None and self.hidden_source_ids is None:
+            raise ValueError("At least one field must be provided.")
+        return self
+
+
+class SourceToggleRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    source_id: int = Field(
+        ...,
+        gt=0,
+        validation_alias=AliasChoices("sourceId", "source_id"),
+        serialization_alias="sourceId",
+    )
+
+
+__all__ = [
+    "LoginRequest",
+    "Preferences",
+    "PreferencesUpdate",
+    "RegisterRequest",
+    "SourceToggleRequest",
+    "TokenResponse",
+    "RefreshRequest",
+]

@@ -134,6 +134,21 @@ def ensure_schema() -> None:
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    theme TEXT NOT NULL DEFAULT 'light',
+                    hidden_source_ids INTEGER[] NOT NULL DEFAULT ARRAY[]::INTEGER[],
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_user_preferences_theme ON user_preferences (theme);
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS newspaper_articles (
                     newspaper_id INTEGER NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
                     article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,

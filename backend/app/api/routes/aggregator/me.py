@@ -23,8 +23,8 @@ class ArticleAction(BaseModel):
     article_id: int = Field(
         ...,
         ge=1,
-        alias="articleId",
         validation_alias=AliasChoices("articleId", "article_id"),
+        serialization_alias="articleId",
     )
 
 
