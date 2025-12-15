@@ -294,6 +294,7 @@ class InMemoryAuthRepository:
         self._ids_by_email: dict[str, int] = {}
         self._emails_by_id: dict[int, str] = {}
         self._passwords: dict[int, str] = {}
+        self._preferences: dict[int, dict[str, object]] = {}
         self._user_tokens: dict[int, dict[str, str]] = {}
         self._token_index: dict[str, tuple[str, int]] = {}
 
@@ -326,6 +327,7 @@ class InMemoryAuthRepository:
             return False
         self._ids_by_email.pop(email, None)
         self._passwords.pop(user_id, None)
+        self._preferences.pop(user_id, None)
         self.delete_tokens_for_user(user_id)
         return True
 
@@ -337,6 +339,36 @@ class InMemoryAuthRepository:
             "access": access_token,
             "refresh": refresh_token,
         }
+
+    def _get_preferences(self, user_id: int) -> dict[str, object]:
+        return self._preferences.setdefault(user_id, {"theme": "light", "hidden_source_ids": set()})
+
+    def get_preferences(self, user_id: int) -> dict[str, object]:
+        prefs = self._get_preferences(user_id)
+        return {"theme": prefs["theme"], "hidden_source_ids": sorted(prefs["hidden_source_ids"])}
+
+    def update_preferences(
+        self,
+        user_id: int,
+        theme: str | None = None,
+        hidden_source_ids: list[int] | None = None,
+    ) -> dict[str, object]:
+        prefs = self._get_preferences(user_id)
+        if theme is not None:
+            prefs["theme"] = theme
+        if hidden_source_ids is not None:
+            prefs["hidden_source_ids"] = set(hidden_source_ids)
+        return self.get_preferences(user_id)
+
+    def add_hidden_source(self, user_id: int, source_id: int) -> dict[str, object]:
+        prefs = self._get_preferences(user_id)
+        prefs["hidden_source_ids"].add(source_id)
+        return self.get_preferences(user_id)
+
+    def remove_hidden_source(self, user_id: int, source_id: int) -> dict[str, object]:
+        prefs = self._get_preferences(user_id)
+        prefs["hidden_source_ids"].discard(source_id)
+        return self.get_preferences(user_id)
 
     def get_email_by_access_token(self, token: str) -> str | None:
         entry = self._token_index.get(token)
