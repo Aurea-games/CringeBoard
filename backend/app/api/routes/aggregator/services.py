@@ -265,17 +265,6 @@ class AggregatorService:
 
     def unfavorite_article(self, article_id: int, user_email: str) -> schemas.Article:
         user_id = self.get_user_id(user_email)
-<<<<<<< HEAD
-        record = self._repository.get_article(article_id)
-        if record is None:
-            raise self._ARTICLE_NOT_FOUND
-
-        self._repository.remove_article_favorite(user_id, article_id)
-        
-        # Return the updated article object (which will include the new popularity count)
-        updated_record = self._repository.get_article(article_id, include_popularity=True)
-        return schemas.Article.model_validate(updated_record)
-=======
         if self._repository.get_article(article_id) is None:
             raise self._ARTICLE_NOT_FOUND
         record = self._repository.remove_article_favorite(user_id, article_id)
@@ -310,7 +299,6 @@ class AggregatorService:
         user_id = self.get_user_id(user_email)
         rows = self._repository.list_read_later_articles(user_id)
         return [schemas.Article.model_validate(row) for row in rows]
->>>>>>> 1c6dedf765c33da44558839219213efcb0c179cb
 
     def update_article(
         self,
@@ -377,12 +365,6 @@ class AggregatorService:
                 detail=f"You do not have permission to {action}.",
             )
 
-<<<<<<< HEAD
-    def list_user_favorites(self, user_email: str) -> list[schemas.Article]:
-        user_id = self.get_user_id(user_email)
-        rows = self._repository.get_user_favorites(user_id)
-        return [schemas.Article.model_validate(row) for row in rows]
-=======
     def _inject_public_url(self, record: dict[str, Any]) -> dict[str, Any]:
         enriched = dict(record)
         token = record.get("public_token")
@@ -394,4 +376,3 @@ class AggregatorService:
 
     def _to_newspaper_model(self, record: dict[str, Any]) -> schemas.Newspaper:
         return schemas.Newspaper.model_validate(self._inject_public_url(record))
->>>>>>> 1c6dedf765c33da44558839219213efcb0c179cb

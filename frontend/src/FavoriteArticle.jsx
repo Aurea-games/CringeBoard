@@ -113,7 +113,6 @@ function Header() {
       setLoggedIn(false);
     }
 
-    // Load theme
     const saved = localStorage.getItem("theme");
     if (saved === "dark") document.body.classList.add("dark");
   }, []);

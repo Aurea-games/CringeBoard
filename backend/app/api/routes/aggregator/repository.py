@@ -438,12 +438,7 @@ class AggregatorRepository:
             )
             return self.fetch_article(cur, article_id)
 
-<<<<<<< HEAD
-    def remove_article_favorite(self, user_id: int, article_id: int) -> bool:
-        """Removes a favorite record. Returns True if a record was deleted, False otherwise."""
-=======
     def remove_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
->>>>>>> 1c6dedf765c33da44558839219213efcb0c179cb
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
@@ -452,10 +447,6 @@ class AggregatorRepository:
                 """,
                 (user_id, article_id),
             )
-<<<<<<< HEAD
-            # Check if any row was affected
-            return cur.rowcount > 0
-=======
             return self.fetch_article(cur, article_id)
 
     def list_favorite_articles(self, user_id: int) -> list[ArticleRow]:
@@ -564,7 +555,6 @@ class AggregatorRepository:
             if article is not None:
                 result.append(article)
         return result
->>>>>>> 1c6dedf765c33da44558839219213efcb0c179cb
 
     def find_article_by_url(self, url: str) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
