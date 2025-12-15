@@ -39,8 +39,11 @@ class InMemoryAggregatorRepository:
     def __init__(self) -> None:
         self._next_newspaper_id = 1
         self._next_article_id = 1
+        self._next_source_id = 1
         self._newspapers: dict[int, dict[str, object]] = {}
         self._articles: dict[int, dict[str, object]] = {}
+        self._sources: dict[int, dict[str, object]] = {}
+        self._followed_sources: dict[int, set[int]] = {}
 
     def _now(self) -> datetime:
         return datetime.now(UTC)
@@ -70,6 +73,14 @@ class InMemoryAggregatorRepository:
         clone.pop("favorite_timestamps", None)
         clone.pop("read_later_user_ids", None)
         clone.pop("read_later_timestamps", None)
+        return clone
+
+    def _clone_source(self, record: dict[str, object], follower_id: int | None = None) -> dict[str, object]:
+        clone = record.copy()
+        if follower_id is not None:
+            clone["is_followed"] = record["id"] in self._followed_sources.get(follower_id, set())
+        else:
+            clone["is_followed"] = False
         return clone
 
     def list_newspapers(self) -> list[dict[str, object]]:
@@ -156,6 +167,100 @@ class InMemoryAggregatorRepository:
             if record.get("is_public") and record.get("public_token") == token:
                 return record.copy()
         return None
+
+    # ---- Sources ----
+    def create_source(
+        self,
+        name: str,
+        feed_url: str | None,
+        description: str | None,
+        status: str = "active",
+    ) -> dict[str, object]:
+        source_id = self._next_source_id
+        self._next_source_id += 1
+        timestamp = self._now()
+        record = {
+            "id": source_id,
+            "name": name,
+            "feed_url": feed_url,
+            "description": description,
+            "status": status or "active",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        self._sources[source_id] = record
+        return self._clone_source(record)
+
+    def list_sources(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        follower_id: int | None = None,
+    ) -> list[dict[str, object]]:
+        results = list(self._sources.values())
+        if status:
+            results = [s for s in results if s.get("status") == status]
+        if search:
+            needle = search.strip().lower()
+            if needle:
+                filtered = []
+                for record in results:
+                    name_match = needle in record["name"].lower()
+                    desc = record.get("description")
+                    desc_match = isinstance(desc, str) and needle in desc.lower()
+                    if name_match or desc_match:
+                        filtered.append(record)
+                results = filtered
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return [self._clone_source(record, follower_id=follower_id) for record in results]
+
+    def get_source(self, source_id: int, follower_id: int | None = None) -> dict[str, object] | None:
+        record = self._sources.get(source_id)
+        return self._clone_source(record, follower_id=follower_id) if record else None
+
+    def update_source(
+        self,
+        source_id: int,
+        name: str | None,
+        feed_url: str | None,
+        description: str | None,
+        status: str | None,
+    ) -> dict[str, object] | None:
+        record = self._sources.get(source_id)
+        if record is None:
+            return None
+        if name is not None:
+            record["name"] = name
+        if feed_url is not None:
+            record["feed_url"] = feed_url
+        if description is not None:
+            record["description"] = description
+        if status is not None:
+            record["status"] = status
+        record["updated_at"] = self._now()
+        return self._clone_source(record)
+
+    def follow_source(self, user_id: int, source_id: int) -> dict[str, object] | None:
+        if source_id not in self._sources:
+            return None
+        self._followed_sources.setdefault(user_id, set()).add(source_id)
+        return self.get_source(source_id, follower_id=user_id)
+
+    def unfollow_source(self, user_id: int, source_id: int) -> dict[str, object] | None:
+        if source_id not in self._sources:
+            return None
+        self._followed_sources.setdefault(user_id, set()).discard(source_id)
+        return self.get_source(source_id, follower_id=user_id)
+
+    def list_followed_sources(self, user_id: int) -> list[dict[str, object]]:
+        followed_ids = self._followed_sources.get(user_id, set())
+        results = []
+        for source_id in followed_ids:
+            record = self._sources.get(source_id)
+            if record:
+                results.append(self._clone_source(record, follower_id=user_id))
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return results
 
     def search_articles(
         self,

@@ -7,6 +7,7 @@ from app.core.db import get_connection
 
 NewspaperRow = dict[str, Any]
 ArticleRow = dict[str, Any]
+SourceRow = dict[str, Any]
 
 
 class AggregatorRepository:
@@ -50,6 +51,26 @@ class AggregatorRepository:
             "created_at": row[6],
             "updated_at": row[7],
             "newspaper_ids": cls.normalize_newspaper_ids(row[8]),
+        }
+
+    @staticmethod
+    def row_to_source(row: tuple[Any, ...] | None) -> SourceRow | None:
+        if row is None:
+            return None
+        # row may include is_followed appended by queries
+        base_length = 7
+        is_followed = False
+        if len(row) > base_length:
+            is_followed = bool(row[7])
+        return {
+            "id": row[0],
+            "name": row[1],
+            "feed_url": row[2],
+            "description": row[3],
+            "status": row[4],
+            "created_at": row[5],
+            "updated_at": row[6],
+            "is_followed": is_followed,
         }
 
     def create_newspaper(self, owner_id: int, title: str, description: str | None) -> NewspaperRow:
@@ -662,3 +683,219 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM articles WHERE id = %s", (article_id,))
             return cur.rowcount > 0
+
+    # ---- Sources management ----
+    def create_source(
+        self,
+        name: str,
+        feed_url: str | None,
+        description: str | None,
+        status: str = "active",
+    ) -> SourceRow:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO sources (name, feed_url, description, status)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, name, feed_url, description, status, created_at, updated_at
+                """,
+                (name, feed_url, description, status),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("Failed to create source.")
+        source = self.row_to_source(row)
+        if source is None:
+            raise RuntimeError("Failed to map created source.")
+        return source
+
+    def list_sources(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        follower_id: int | None = None,
+    ) -> list[SourceRow]:
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if status:
+            clauses.append("s.status = %s")
+            params.append(status)
+
+        pattern: str | None = None
+        if search:
+            trimmed = search.strip()
+            if trimmed:
+                pattern = f"%{trimmed}%"
+                clauses.append("(s.name ILIKE %s OR s.description ILIKE %s)")
+                params.extend([pattern, pattern])
+
+        sql = [
+            """
+            SELECT
+                s.id,
+                s.name,
+                s.feed_url,
+                s.description,
+                s.status,
+                s.created_at,
+                s.updated_at
+            """,
+        ]
+        if follower_id is not None:
+            sql.append(
+                """
+                , CASE WHEN uf.user_id IS NULL THEN FALSE ELSE TRUE END AS is_followed
+                """
+            )
+        sql.append("FROM sources AS s")
+        if follower_id is not None:
+            sql.append(
+                """
+                LEFT JOIN user_followed_sources AS uf
+                    ON uf.source_id = s.id AND uf.user_id = %s
+                """
+            )
+            params.insert(0, follower_id)
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+        sql.append("ORDER BY s.created_at DESC")
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+
+        results: list[SourceRow] = []
+        for row in rows:
+            source = self.row_to_source(row)
+            if source is not None:
+                results.append(source)
+        return results
+
+    def get_source(self, source_id: int, follower_id: int | None = None) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            if follower_id is None:
+                cur.execute(
+                    """
+                    SELECT id, name, feed_url, description, status, created_at, updated_at
+                    FROM sources
+                    WHERE id = %s
+                    """,
+                    (source_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        s.id,
+                        s.name,
+                        s.feed_url,
+                        s.description,
+                        s.status,
+                        s.created_at,
+                        s.updated_at,
+                        CASE WHEN uf.user_id IS NULL THEN FALSE ELSE TRUE END AS is_followed
+                    FROM sources AS s
+                    LEFT JOIN user_followed_sources AS uf
+                        ON uf.source_id = s.id AND uf.user_id = %s
+                    WHERE s.id = %s
+                    """,
+                    (follower_id, source_id),
+                )
+            row = cur.fetchone()
+        return self.row_to_source(row)
+
+    def update_source(
+        self,
+        source_id: int,
+        name: str | None,
+        feed_url: str | None,
+        description: str | None,
+        status: str | None,
+    ) -> SourceRow | None:
+        assignments: list[str] = []
+        params: list[Any] = []
+
+        if name is not None:
+            assignments.append("name = %s")
+            params.append(name)
+        if feed_url is not None:
+            assignments.append("feed_url = %s")
+            params.append(feed_url)
+        if description is not None:
+            assignments.append("description = %s")
+            params.append(description)
+        if status is not None:
+            assignments.append("status = %s")
+            params.append(status)
+
+        set_clause = ", ".join(assignments)
+        if set_clause:
+            set_clause = f"{set_clause}, "
+
+        params.append(source_id)
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE sources
+                SET {set_clause}updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, feed_url, description, status, created_at, updated_at
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+        return self.row_to_source(row)
+
+    def follow_source(self, user_id: int, source_id: int) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO user_followed_sources (user_id, source_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (user_id, source_id),
+            )
+            return self.get_source(source_id, follower_id=user_id)
+
+    def unfollow_source(self, user_id: int, source_id: int) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM user_followed_sources
+                WHERE user_id = %s AND source_id = %s
+                """,
+                (user_id, source_id),
+            )
+            return self.get_source(source_id, follower_id=user_id)
+
+    def list_followed_sources(self, user_id: int) -> list[SourceRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    s.id,
+                    s.name,
+                    s.feed_url,
+                    s.description,
+                    s.status,
+                    s.created_at,
+                    s.updated_at,
+                    TRUE AS is_followed
+                FROM user_followed_sources AS uf
+                JOIN sources AS s ON s.id = uf.source_id
+                WHERE uf.user_id = %s
+                ORDER BY uf.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        results: list[SourceRow] = []
+        for row in rows:
+            source = self.row_to_source(row)
+            if source is not None:
+                results.append(source)
+        return results

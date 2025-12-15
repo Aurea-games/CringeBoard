@@ -68,3 +68,32 @@ class NewspaperDetail(Newspaper):
 
 class NewspaperShareRequest(BaseModel):
     public: bool
+
+
+class SourceBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    feed_url: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2000)
+    status: str | None = Field(None, min_length=1, max_length=50)
+
+
+class SourceCreate(SourceBase):
+    pass
+
+
+class SourceUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255)
+    feed_url: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2000)
+    status: str | None = Field(None, min_length=1, max_length=50)
+
+
+class Source(BaseModel):
+    id: int
+    name: str
+    feed_url: str | None = None
+    description: str | None = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    is_followed: bool = False
