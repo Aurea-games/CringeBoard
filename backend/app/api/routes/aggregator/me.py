@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.routes.auth import dependencies as auth_dependencies
 
@@ -20,12 +20,15 @@ class ArticleAction(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    article_id: int = Field(
-        ...,
-        ge=1,
-        validation_alias=AliasChoices("articleId", "article_id"),
-        serialization_alias="articleId",
-    )
+    article_id: Annotated[int, Field(ge=1)]
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_aliases(cls, data: object) -> object:
+        if isinstance(data, dict) and "articleId" in data and "article_id" not in data:
+            data = dict(data)
+            data["article_id"] = data.pop("articleId")
+        return data
 
 
 @router.get(

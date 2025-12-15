@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 NEWSPAPERS_URL = "/v1/newspapers"
+PUBLIC_URL = "/v1/public/newspapers"
 
 
 def register_user(client: TestClient, email: str) -> dict[str, str]:
@@ -138,6 +139,43 @@ def test_get_newspaper_returns_articles(auth_test_client: TestClient) -> None:
     filtered = auth_test_client.get(f"{NEWSPAPERS_URL}/{newspaper_id}/articles", params={"q": "Discovery"})
     assert filtered.status_code == 200
     assert len(filtered.json()) == 1
+
+
+def test_owner_can_share_and_unshare_newspaper(auth_test_client: TestClient) -> None:
+    tokens = register_user(auth_test_client, "sharer@example.org")
+    created = auth_test_client.post(
+        NEWSPAPERS_URL,
+        json={"title": "Sharing Paper", "description": "To be shared."},
+        headers=auth_headers(tokens["access_token"]),
+    ).json()
+    newspaper_id = created["id"]
+    assert created["is_public"] is False
+
+    share_response = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/share",
+        json={"public": True},
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert share_response.status_code == 200
+    shared = share_response.json()
+    assert shared["is_public"] is True
+    assert shared["public_token"]
+    assert shared["public_url"]
+
+    public_fetch = auth_test_client.get(f"{PUBLIC_URL}/{shared['public_token']}")
+    assert public_fetch.status_code == 200
+    public_data = public_fetch.json()
+    assert public_data["id"] == newspaper_id
+    assert public_data["is_public"] is True
+
+    unshare_response = auth_test_client.post(
+        f"{NEWSPAPERS_URL}/{newspaper_id}/share",
+        json={"public": False},
+        headers=auth_headers(tokens["access_token"]),
+    )
+    assert unshare_response.status_code == 200
+    unshared = unshare_response.json()
+    assert unshared["is_public"] is False
 
 
 def test_search_newspapers_supports_query_and_owner_filter(auth_test_client: TestClient) -> None:

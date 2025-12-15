@@ -134,6 +134,18 @@ def ensure_schema() -> None:
             )
             cur.execute(
                 """
+                ALTER TABLE newspapers
+                ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE newspapers
+                ADD COLUMN IF NOT EXISTS public_token TEXT UNIQUE;
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS user_preferences (
                     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
                     theme TEXT NOT NULL DEFAULT 'light',

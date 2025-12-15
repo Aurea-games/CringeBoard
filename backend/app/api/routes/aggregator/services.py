@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import secrets
+from typing import Any
+
 from fastapi import HTTPException, status
 
 from app.api.routes.auth.repository import AuthRepository
@@ -34,7 +37,7 @@ class AggregatorService:
                 return []
 
         rows = self._repository.search_newspapers(search, owner_id)
-        return [schemas.Newspaper.model_validate(row) for row in rows]
+        return [self._to_newspaper_model(row) for row in rows]
 
     def create_newspaper(self, owner_email: str, payload: schemas.NewspaperCreate) -> schemas.Newspaper:
         owner_id = self.get_user_id(owner_email)
@@ -48,14 +51,14 @@ class AggregatorService:
         if description == "":
             description = None
         record = self._repository.create_newspaper(owner_id, title, description)
-        return schemas.Newspaper.model_validate(record)
+        return self._to_newspaper_model(record)
 
     def get_newspaper(self, newspaper_id: int) -> schemas.NewspaperDetail:
         record = self._repository.get_newspaper(newspaper_id)
         if record is None:
             raise self._NEWSPAPER_NOT_FOUND
         articles = self._repository.search_articles(newspaper_id=newspaper_id)
-        return schemas.NewspaperDetail.from_parts(record, articles)
+        return schemas.NewspaperDetail.from_parts(self._inject_public_url(record), articles)
 
     def update_newspaper(
         self,
@@ -92,7 +95,7 @@ class AggregatorService:
         record = self._repository.update_newspaper(newspaper_id, title, description)
         if record is None:
             raise self._NEWSPAPER_NOT_FOUND
-        return schemas.Newspaper.model_validate(record)
+        return self._to_newspaper_model(record)
 
     def delete_newspaper(self, newspaper_id: int, owner_email: str) -> None:
         owner_id = self.get_user_id(owner_email)
@@ -221,6 +224,34 @@ class AggregatorService:
         rows = self._repository.get_related_articles(article_id, limit=limit)
         return [schemas.Article.model_validate(row) for row in rows]
 
+    def share_newspaper(self, newspaper_id: int, owner_email: str, make_public: bool) -> schemas.Newspaper:
+        owner_id = self.get_user_id(owner_email)
+        newspaper = self._repository.get_newspaper(newspaper_id)
+        if newspaper is None:
+            raise self._NEWSPAPER_NOT_FOUND
+        self.ensure_ownership(newspaper["owner_id"], owner_id, "modify this newspaper")
+
+        public_token: str | None = newspaper.get("public_token")
+        if make_public and not public_token:
+            public_token = secrets.token_urlsafe(16)
+        if not make_public:
+            public_token = newspaper.get("public_token")
+        updated = self._repository.update_newspaper_publication(
+            newspaper_id=newspaper_id,
+            is_public=make_public,
+            public_token=public_token if make_public else public_token,
+        )
+        if updated is None:
+            raise self._NEWSPAPER_NOT_FOUND
+        return self._to_newspaper_model(updated)
+
+    def get_public_newspaper(self, token: str) -> schemas.NewspaperDetail:
+        record = self._repository.get_newspaper_by_token(token.strip())
+        if record is None:
+            raise self._NEWSPAPER_NOT_FOUND
+        articles = self._repository.search_articles(newspaper_id=record["id"])
+        return schemas.NewspaperDetail.from_parts(self._inject_public_url(record), articles)
+
     def favorite_article(self, article_id: int, user_email: str) -> schemas.Article:
         user_id = self.get_user_id(user_email)
         article = self._repository.get_article(article_id)
@@ -333,3 +364,15 @@ class AggregatorService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"You do not have permission to {action}.",
             )
+
+    def _inject_public_url(self, record: dict[str, Any]) -> dict[str, Any]:
+        enriched = dict(record)
+        token = record.get("public_token")
+        if token and record.get("is_public"):
+            enriched["public_url"] = f"/v1/public/newspapers/{token}"
+        else:
+            enriched["public_url"] = None
+        return enriched
+
+    def _to_newspaper_model(self, record: dict[str, Any]) -> schemas.Newspaper:
+        return schemas.Newspaper.model_validate(self._inject_public_url(record))
