@@ -114,6 +114,53 @@ def ensure_schema() -> None:
             )
             cur.execute(
                 """
+                CREATE TABLE IF NOT EXISTS article_read_later (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, article_id)
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_article_read_later_article_id ON article_read_later (article_id);
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_article_read_later_user_id ON article_read_later (user_id);
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE newspapers
+                ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE newspapers
+                ADD COLUMN IF NOT EXISTS public_token TEXT UNIQUE;
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    theme TEXT NOT NULL DEFAULT 'light',
+                    hidden_source_ids INTEGER[] NOT NULL DEFAULT ARRAY[]::INTEGER[],
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_user_preferences_theme ON user_preferences (theme);
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS newspaper_articles (
                     newspaper_id INTEGER NOT NULL REFERENCES newspapers(id) ON DELETE CASCADE,
                     article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,

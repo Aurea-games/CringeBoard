@@ -3,7 +3,108 @@ from collections.abc import Callable
 from app.core.db import get_connection
 
 
-class AuthRepository:
+class UserPreferencesRepositoryMixin:
+    """Preference related data access shared with AuthRepository."""
+
+    _DEFAULT_THEME = "light"
+
+    def _ensure_preferences_row(self, cur, user_id: int) -> None:
+        cur.execute(
+            """
+            INSERT INTO user_preferences (user_id, theme, hidden_source_ids)
+            VALUES (%s, %s, ARRAY[]::INTEGER[])
+            ON CONFLICT (user_id) DO NOTHING
+            """,
+            (user_id, self._DEFAULT_THEME),
+        )
+
+    def get_preferences(self, user_id: int) -> dict[str, object]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            self._ensure_preferences_row(cur, user_id)
+            cur.execute(
+                """
+                SELECT theme, COALESCE(hidden_source_ids, ARRAY[]::INTEGER[])
+                FROM user_preferences
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return {"theme": self._DEFAULT_THEME, "hidden_source_ids": []}
+            theme, hidden_source_ids = row
+            return {
+                "theme": theme,
+                "hidden_source_ids": [int(identifier) for identifier in hidden_source_ids],
+            }
+
+    def update_preferences(
+        self,
+        user_id: int,
+        theme: str | None = None,
+        hidden_source_ids: list[int] | None = None,
+    ) -> dict[str, object]:
+        assignments: list[str] = []
+        params: list[object] = []
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            self._ensure_preferences_row(cur, user_id)
+            if theme is not None:
+                assignments.append("theme = %s")
+                params.append(theme)
+            if hidden_source_ids is not None:
+                assignments.append("hidden_source_ids = %s")
+                params.append(hidden_source_ids)
+            if assignments:
+                params.append(user_id)
+                cur.execute(
+                    f"""
+                    UPDATE user_preferences
+                    SET {", ".join(assignments)}, updated_at = NOW()
+                    WHERE user_id = %s
+                    """,
+                    tuple(params),
+                )
+            return self.get_preferences(user_id)
+
+    def add_hidden_source(self, user_id: int, source_id: int) -> dict[str, object]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            self._ensure_preferences_row(cur, user_id)
+            cur.execute(
+                """
+                UPDATE user_preferences
+                SET hidden_source_ids = (
+                    SELECT ARRAY(
+                        SELECT DISTINCT identifier
+                        FROM UNNEST(hidden_source_ids || %s::INTEGER) AS t(identifier)
+                    )
+                ),
+                updated_at = NOW()
+                WHERE user_id = %s
+                """,
+                ([source_id], user_id),
+            )
+            return self.get_preferences(user_id)
+
+    def remove_hidden_source(self, user_id: int, source_id: int) -> dict[str, object]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            self._ensure_preferences_row(cur, user_id)
+            cur.execute(
+                """
+                UPDATE user_preferences
+                SET hidden_source_ids = ARRAY(
+                    SELECT identifier
+                    FROM UNNEST(hidden_source_ids) AS t(identifier)
+                    WHERE identifier <> %s
+                ),
+                updated_at = NOW()
+                WHERE user_id = %s
+                """,
+                (source_id, user_id),
+            )
+            return self.get_preferences(user_id)
+
+
+class AuthRepository(UserPreferencesRepositoryMixin):
     """Data access layer for persisting and retrieving authentication data."""
 
     def __init__(self, connection_factory: Callable = get_connection) -> None:
