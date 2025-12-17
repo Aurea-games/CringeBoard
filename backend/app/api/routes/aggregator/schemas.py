@@ -12,12 +12,13 @@ class NewspaperBase(BaseModel):
 
 
 class NewspaperCreate(NewspaperBase):
-    pass
+    source_id: int | None = Field(None, ge=1)
 
 
 class NewspaperUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = Field(None, max_length=2000)
+    source_id: int | None = Field(None, ge=1)
 
 
 class Newspaper(BaseModel):
@@ -28,6 +29,7 @@ class Newspaper(BaseModel):
     is_public: bool = False
     public_token: str | None = None
     public_url: str | None = None
+    source_id: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -97,3 +99,14 @@ class Source(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_followed: bool = False
+
+
+class Notification(BaseModel):
+    id: int
+    user_id: int
+    source_id: int
+    article_id: int | None = None
+    newspaper_id: int | None = None
+    message: str
+    is_read: bool = False
+    created_at: datetime
