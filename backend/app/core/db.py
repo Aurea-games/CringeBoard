@@ -174,6 +174,40 @@ def ensure_schema() -> None:
                 CREATE INDEX IF NOT EXISTS ix_newspaper_articles_article_id ON newspaper_articles (article_id);
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS sources (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    feed_url TEXT,
+                    description TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_sources_name ON sources (LOWER(name));
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_followed_sources (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, source_id)
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_user_followed_sources_source_id
+                    ON user_followed_sources (source_id);
+                """
+            )
 
 
 @contextmanager

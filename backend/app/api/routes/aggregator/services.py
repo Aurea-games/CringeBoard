@@ -23,6 +23,10 @@ class AggregatorService:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Article not found.",
     )
+    _SOURCE_NOT_FOUND = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Source not found.",
+    )
 
     def __init__(self, repository: AggregatorRepository, auth_repository: AuthRepository) -> None:
         self._repository = repository
@@ -347,6 +351,112 @@ class AggregatorService:
 
         if not self._repository.delete_article(article_id):
             raise self._ARTICLE_NOT_FOUND
+
+    # ---- Sources ----
+    def list_sources(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        follower_email: str | None = None,
+    ) -> list[schemas.Source]:
+        follower_id: int | None = None
+        if follower_email:
+            follower_id = self._auth_repository.get_user_id(normalize_email(follower_email))
+        rows = self._repository.list_sources(search=search, status=status, follower_id=follower_id)
+        return [schemas.Source.model_validate(row) for row in rows]
+
+    def create_source(self, payload: schemas.SourceCreate) -> schemas.Source:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Name must not be empty.",
+            )
+        feed_url = payload.feed_url.strip() if isinstance(payload.feed_url, str) else None
+        if feed_url == "":
+            feed_url = None
+        description = payload.description.strip() if isinstance(payload.description, str) else None
+        if description == "":
+            description = None
+        status_value = payload.status.strip() if isinstance(payload.status, str) else "active"
+        record = self._repository.create_source(
+            name=name,
+            feed_url=feed_url,
+            description=description,
+            status=status_value or "active",
+        )
+        return schemas.Source.model_validate(record)
+
+    def get_source(self, source_id: int, follower_email: str | None = None) -> schemas.Source:
+        follower_id: int | None = None
+        if follower_email:
+            follower_id = self._auth_repository.get_user_id(normalize_email(follower_email))
+        record = self._repository.get_source(source_id, follower_id=follower_id)
+        if record is None:
+            raise self._SOURCE_NOT_FOUND
+        return schemas.Source.model_validate(record)
+
+    def update_source(
+        self,
+        source_id: int,
+        payload: schemas.SourceUpdate,
+    ) -> schemas.Source:
+        updates = payload.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one field must be provided for update.",
+            )
+        name = updates.get("name")
+        feed_url = updates.get("feed_url")
+        description = updates.get("description")
+        status_value = updates.get("status")
+        if isinstance(name, str):
+            name = name.strip()
+            if not name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Name must not be empty.",
+                )
+        if isinstance(feed_url, str):
+            feed_url = feed_url.strip() or None
+        if isinstance(description, str):
+            description = description.strip() or None
+        if isinstance(status_value, str):
+            status_value = status_value.strip() or None
+        record = self._repository.update_source(
+            source_id=source_id,
+            name=name,
+            feed_url=feed_url,
+            description=description,
+            status=status_value,
+        )
+        if record is None:
+            raise self._SOURCE_NOT_FOUND
+        return schemas.Source.model_validate(record)
+
+    def follow_source(self, source_id: int, user_email: str) -> schemas.Source:
+        user_id = self.get_user_id(user_email)
+        if self._repository.get_source(source_id) is None:
+            raise self._SOURCE_NOT_FOUND
+        record = self._repository.follow_source(user_id, source_id)
+        if record is None:
+            raise self._SOURCE_NOT_FOUND
+        return schemas.Source.model_validate(record)
+
+    def unfollow_source(self, source_id: int, user_email: str) -> schemas.Source:
+        user_id = self.get_user_id(user_email)
+        if self._repository.get_source(source_id) is None:
+            raise self._SOURCE_NOT_FOUND
+        record = self._repository.unfollow_source(user_id, source_id)
+        if record is None:
+            raise self._SOURCE_NOT_FOUND
+        return schemas.Source.model_validate(record)
+
+    def list_followed_sources(self, user_email: str) -> list[schemas.Source]:
+        user_id = self.get_user_id(user_email)
+        rows = self._repository.list_followed_sources(user_id)
+        return [schemas.Source.model_validate(row) for row in rows]
 
     def get_user_id(self, email: str) -> int:
         user_id = self._auth_repository.get_user_id(email)

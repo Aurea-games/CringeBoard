@@ -95,4 +95,12 @@ def remove_read_later(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get(
+    "/sources",
+    response_model=list[schemas.Source],
+)
+def list_followed_sources(current_email: CurrentUserEmail) -> list[schemas.Source]:
+    return aggregator_dependencies.aggregator_service.list_followed_sources(current_email)
+
+
 __all__ = ["router"]
