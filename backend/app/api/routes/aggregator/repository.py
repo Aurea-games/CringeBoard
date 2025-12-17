@@ -8,6 +8,7 @@ from app.core.db import get_connection
 NewspaperRow = dict[str, Any]
 ArticleRow = dict[str, Any]
 SourceRow = dict[str, Any]
+NotificationRow = dict[str, Any]
 
 
 class AggregatorRepository:
@@ -29,6 +30,7 @@ class AggregatorRepository:
             "public_token": row[5],
             "created_at": row[6],
             "updated_at": row[7],
+            "source_id": row[8],
         }
 
     @staticmethod
@@ -73,15 +75,36 @@ class AggregatorRepository:
             "is_followed": is_followed,
         }
 
-    def create_newspaper(self, owner_id: int, title: str, description: str | None) -> NewspaperRow:
+    @staticmethod
+    def row_to_notification(row: tuple[Any, ...] | None) -> NotificationRow | None:
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "user_id": row[1],
+            "source_id": row[2],
+            "article_id": row[3],
+            "newspaper_id": row[4],
+            "message": row[5],
+            "is_read": row[6],
+            "created_at": row[7],
+        }
+
+    def create_newspaper(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        source_id: int | None = None,
+    ) -> NewspaperRow:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO newspapers (title, description, owner_id)
-                VALUES (%s, %s, %s)
-                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                INSERT INTO newspapers (title, description, owner_id, source_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 """,
-                (title, description, owner_id),
+                (title, description, owner_id, source_id),
             )
             row = cur.fetchone()
         if row is None:
@@ -111,7 +134,7 @@ class AggregatorRepository:
                 params.extend([pattern, pattern])
 
         sql = [
-            "SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at",
+            "SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id",
             "FROM newspapers",
         ]
         if clauses:
@@ -133,7 +156,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 FROM newspapers
                 WHERE owner_id = %s AND title = %s
                 """,
@@ -146,7 +169,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 FROM newspapers
                 WHERE id = %s
                 """,
@@ -160,6 +183,8 @@ class AggregatorRepository:
         newspaper_id: int,
         title: str | None,
         description: str | None,
+        source_id: int | None,
+        update_source_id: bool = False,
     ) -> NewspaperRow | None:
         assignments: list[str] = []
         params: list[Any] = []
@@ -170,6 +195,9 @@ class AggregatorRepository:
         if description is not None:
             assignments.append("description = %s")
             params.append(description)
+        if update_source_id:
+            assignments.append("source_id = %s")
+            params.append(source_id)
 
         set_clause = ", ".join(assignments)
         if set_clause:
@@ -183,7 +211,7 @@ class AggregatorRepository:
                 UPDATE newspapers
                 SET {set_clause}updated_at = NOW()
                 WHERE id = %s
-                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 """,
                 tuple(params),
             )
@@ -209,7 +237,7 @@ class AggregatorRepository:
                     public_token = %s,
                     updated_at = NOW()
                 WHERE id = %s
-                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 """,
                 (is_public, public_token, newspaper_id),
             )
@@ -220,7 +248,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 FROM newspapers
                 WHERE public_token = %s AND is_public = TRUE
                 """,
@@ -771,6 +799,63 @@ class AggregatorRepository:
             if source is not None:
                 results.append(source)
         return results
+
+    # ---- Notifications ----
+    def create_notifications_for_source_followers(
+        self,
+        source_id: int,
+        message: str,
+        article_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> int:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO notifications (user_id, source_id, article_id, newspaper_id, message)
+                SELECT uf.user_id, %s, %s, %s, %s
+                FROM user_followed_sources AS uf
+                WHERE uf.source_id = %s
+                """,
+                (source_id, article_id, newspaper_id, message, source_id),
+            )
+            return cur.rowcount
+
+    def list_notifications(self, user_id: int, include_read: bool = False) -> list[NotificationRow]:
+        clauses = ["user_id = %s"]
+        params: list[Any] = [user_id]
+        if not include_read:
+            clauses.append("is_read = FALSE")
+        sql = [
+            """
+            SELECT id, user_id, source_id, article_id, newspaper_id, message, is_read, created_at
+            FROM notifications
+            WHERE """
+            + " AND ".join(clauses),
+            "ORDER BY created_at DESC",
+        ]
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+        result: list[NotificationRow] = []
+        for row in rows:
+            notification = self.row_to_notification(row)
+            if notification is not None:
+                result.append(notification)
+        return result
+
+    def mark_notification_read(self, user_id: int, notification_id: int) -> NotificationRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE notifications
+                SET is_read = TRUE
+                WHERE id = %s AND user_id = %s
+                RETURNING id, user_id, source_id, article_id, newspaper_id, message, is_read, created_at
+                """,
+                (notification_id, user_id),
+            )
+            row = cur.fetchone()
+        return self.row_to_notification(row)
 
     def get_source(self, source_id: int, follower_id: int | None = None) -> SourceRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:

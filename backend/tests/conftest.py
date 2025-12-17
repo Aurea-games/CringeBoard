@@ -40,15 +40,23 @@ class InMemoryAggregatorRepository:
         self._next_newspaper_id = 1
         self._next_article_id = 1
         self._next_source_id = 1
+        self._next_notification_id = 1
         self._newspapers: dict[int, dict[str, object]] = {}
         self._articles: dict[int, dict[str, object]] = {}
         self._sources: dict[int, dict[str, object]] = {}
         self._followed_sources: dict[int, set[int]] = {}
+        self._notifications: dict[int, dict[str, object]] = {}
 
     def _now(self) -> datetime:
         return datetime.now(UTC)
 
-    def create_newspaper(self, owner_id: int, title: str, description: str | None) -> dict[str, object]:
+    def create_newspaper(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        source_id: int | None = None,
+    ) -> dict[str, object]:
         newspaper_id = self._next_newspaper_id
         self._next_newspaper_id += 1
         timestamp = self._now()
@@ -61,6 +69,7 @@ class InMemoryAggregatorRepository:
             "public_token": None,
             "created_at": timestamp,
             "updated_at": timestamp,
+            "source_id": source_id,
         }
         self._newspapers[newspaper_id] = record
         return record.copy()
@@ -82,6 +91,9 @@ class InMemoryAggregatorRepository:
         else:
             clone["is_followed"] = False
         return clone
+
+    def _clone_notification(self, record: dict[str, object]) -> dict[str, object]:
+        return record.copy()
 
     def list_newspapers(self) -> list[dict[str, object]]:
         return self.search_newspapers()
@@ -124,6 +136,8 @@ class InMemoryAggregatorRepository:
         newspaper_id: int,
         title: str | None,
         description: str | None,
+        source_id: int | None = None,
+        update_source_id: bool = False,
     ) -> dict[str, object] | None:
         record = self._newspapers.get(newspaper_id)
         if record is None:
@@ -132,6 +146,8 @@ class InMemoryAggregatorRepository:
             record["title"] = title
         if description is not None:
             record["description"] = description
+        if update_source_id:
+            record["source_id"] = source_id
         record["updated_at"] = self._now()
         return record.copy()
 
@@ -413,6 +429,53 @@ class InMemoryAggregatorRepository:
 
     def delete_article(self, article_id: int) -> bool:
         return self._articles.pop(article_id, None) is not None
+
+    # ---- Notifications ----
+    def create_notifications_for_source_followers(
+        self,
+        source_id: int,
+        message: str,
+        article_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> int:
+        created = 0
+        timestamp = self._now()
+        for user_id, followed in self._followed_sources.items():
+            if source_id not in followed:
+                continue
+            notification_id = self._next_notification_id
+            self._next_notification_id += 1
+            record = {
+                "id": notification_id,
+                "user_id": user_id,
+                "source_id": source_id,
+                "article_id": article_id,
+                "newspaper_id": newspaper_id,
+                "message": message,
+                "is_read": False,
+                "created_at": timestamp,
+            }
+            self._notifications[notification_id] = record
+            created += 1
+        return created
+
+    def list_notifications(self, user_id: int, include_read: bool = False) -> list[dict[str, object]]:
+        results: list[dict[str, object]] = []
+        for record in self._notifications.values():
+            if record["user_id"] != user_id:
+                continue
+            if not include_read and record.get("is_read"):
+                continue
+            results.append(self._clone_notification(record))
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return results
+
+    def mark_notification_read(self, user_id: int, notification_id: int) -> dict[str, object] | None:
+        record = self._notifications.get(notification_id)
+        if record is None or record["user_id"] != user_id:
+            return None
+        record["is_read"] = True
+        return self._clone_notification(record)
 
 
 class InMemoryAuthRepository:

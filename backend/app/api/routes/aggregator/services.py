@@ -27,6 +27,10 @@ class AggregatorService:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Source not found.",
     )
+    _NOTIFICATION_NOT_FOUND = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Notification not found.",
+    )
 
     def __init__(self, repository: AggregatorRepository, auth_repository: AuthRepository) -> None:
         self._repository = repository
@@ -54,8 +58,17 @@ class AggregatorService:
         description = payload.description.strip() if payload.description else None
         if description == "":
             description = None
-        record = self._repository.create_newspaper(owner_id, title, description)
-        return self._to_newspaper_model(record)
+        source_id = payload.source_id
+        source = None
+        if source_id is not None:
+            source = self._repository.get_source(source_id)
+            if source is None:
+                raise self._SOURCE_NOT_FOUND
+        record = self._repository.create_newspaper(owner_id, title, description, source_id=source_id)
+        newspaper = self._to_newspaper_model(record)
+        if source:
+            self._notify_newspaper_followers(source, newspaper)
+        return newspaper
 
     def get_newspaper(self, newspaper_id: int) -> schemas.NewspaperDetail:
         record = self._repository.get_newspaper(newspaper_id)
@@ -96,7 +109,17 @@ class AggregatorService:
             description = description.strip()
             if not description:
                 description = None
-        record = self._repository.update_newspaper(newspaper_id, title, description)
+        update_source_id = "source_id" in updates
+        source_id = updates.get("source_id") if update_source_id else None
+        if update_source_id and source_id is not None and self._repository.get_source(source_id) is None:
+            raise self._SOURCE_NOT_FOUND
+        record = self._repository.update_newspaper(
+            newspaper_id,
+            title,
+            description,
+            source_id,
+            update_source_id=update_source_id,
+        )
         if record is None:
             raise self._NEWSPAPER_NOT_FOUND
         return self._to_newspaper_model(record)
@@ -171,7 +194,9 @@ class AggregatorService:
             content=content,
             url=url,
         )
-        return schemas.Article.model_validate(record)
+        article = schemas.Article.model_validate(record)
+        self._maybe_notify_new_article(newspaper, article)
+        return article
 
     def attach_article_to_newspaper(
         self,
@@ -192,7 +217,9 @@ class AggregatorService:
         record = self._repository.assign_article_to_newspaper(article_id, newspaper_id)
         if record is None:
             raise self._ARTICLE_NOT_FOUND
-        return schemas.Article.model_validate(record)
+        attached = schemas.Article.model_validate(record)
+        self._maybe_notify_new_article(newspaper, attached)
+        return attached
 
     def detach_article_from_newspaper(
         self,
@@ -458,6 +485,19 @@ class AggregatorService:
         rows = self._repository.list_followed_sources(user_id)
         return [schemas.Source.model_validate(row) for row in rows]
 
+    # ---- Notifications ----
+    def list_notifications(self, user_email: str, include_read: bool = False) -> list[schemas.Notification]:
+        user_id = self.get_user_id(user_email)
+        rows = self._repository.list_notifications(user_id, include_read=include_read)
+        return [schemas.Notification.model_validate(row) for row in rows]
+
+    def mark_notification_read(self, notification_id: int, user_email: str) -> schemas.Notification:
+        user_id = self.get_user_id(user_email)
+        record = self._repository.mark_notification_read(user_id, notification_id)
+        if record is None:
+            raise self._NOTIFICATION_NOT_FOUND
+        return schemas.Notification.model_validate(record)
+
     def get_user_id(self, email: str) -> int:
         user_id = self._auth_repository.get_user_id(email)
         if user_id is None:
@@ -474,6 +514,47 @@ class AggregatorService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"You do not have permission to {action}.",
             )
+
+    def _maybe_notify_new_article(self, newspaper: dict[str, Any], article: schemas.Article) -> None:
+        source = self._get_source_from_newspaper(newspaper)
+        if source is None:
+            return
+        message = self._build_article_notification_message(source["name"], newspaper.get("title"), article.title)
+        self._repository.create_notifications_for_source_followers(
+            source_id=source["id"],
+            article_id=article.id,
+            newspaper_id=newspaper.get("id"),
+            message=message,
+        )
+
+    def _notify_newspaper_followers(self, source: dict[str, Any], newspaper: schemas.Newspaper) -> None:
+        message = self._build_newspaper_notification_message(source["name"], newspaper.title)
+        self._repository.create_notifications_for_source_followers(
+            source_id=source["id"],
+            newspaper_id=newspaper.id,
+            message=message,
+        )
+
+    def _get_source_from_newspaper(self, newspaper: dict[str, Any]) -> dict[str, Any] | None:
+        source_id = newspaper.get("source_id")
+        if source_id is None:
+            return None
+        return self._repository.get_source(int(source_id))
+
+    @staticmethod
+    def _build_newspaper_notification_message(source_name: str, newspaper_title: str) -> str:
+        return f"{source_name} published a new newspaper: {newspaper_title}"
+
+    @staticmethod
+    def _build_article_notification_message(
+        source_name: str,
+        newspaper_title: str | None,
+        article_title: str,
+    ) -> str:
+        base = f"{source_name} published a new article: {article_title}"
+        if newspaper_title:
+            return f"{base} in {newspaper_title}"
+        return base
 
     def _inject_public_url(self, record: dict[str, Any]) -> dict[str, Any]:
         enriched = dict(record)
