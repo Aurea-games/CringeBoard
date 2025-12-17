@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Any
 
@@ -9,6 +10,7 @@ NewspaperRow = dict[str, Any]
 ArticleRow = dict[str, Any]
 SourceRow = dict[str, Any]
 NotificationRow = dict[str, Any]
+CustomFeedRow = dict[str, Any]
 
 
 class AggregatorRepository:
@@ -983,4 +985,252 @@ class AggregatorRepository:
             source = self.row_to_source(row)
             if source is not None:
                 results.append(source)
+        return results
+
+    # ---- Custom Feeds ----
+    @staticmethod
+    def row_to_custom_feed(row: tuple[Any, ...] | None) -> CustomFeedRow | None:
+        if row is None:
+            return None
+        filter_rules = row[4]
+        if isinstance(filter_rules, str):
+            filter_rules = json.loads(filter_rules)
+        return {
+            "id": row[0],
+            "owner_id": row[1],
+            "name": row[2],
+            "description": row[3],
+            "filter_rules": filter_rules,
+            "created_at": row[5],
+            "updated_at": row[6],
+        }
+
+    def create_custom_feed(
+        self,
+        owner_id: int,
+        name: str,
+        description: str | None,
+        filter_rules: dict[str, Any],
+    ) -> CustomFeedRow:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO custom_feeds (owner_id, name, description, filter_rules)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, owner_id, name, description, filter_rules, created_at, updated_at
+                """,
+                (owner_id, name, description, json.dumps(filter_rules)),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("Failed to create custom feed.")
+        custom_feed = self.row_to_custom_feed(row)
+        if custom_feed is None:
+            raise RuntimeError("Failed to map created custom feed.")
+        return custom_feed
+
+    def list_custom_feeds(self, owner_id: int) -> list[CustomFeedRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, owner_id, name, description, filter_rules, created_at, updated_at
+                FROM custom_feeds
+                WHERE owner_id = %s
+                ORDER BY created_at DESC
+                """,
+                (owner_id,),
+            )
+            rows = cur.fetchall()
+
+        results: list[CustomFeedRow] = []
+        for row in rows:
+            custom_feed = self.row_to_custom_feed(row)
+            if custom_feed is not None:
+                results.append(custom_feed)
+        return results
+
+    def get_custom_feed(self, custom_feed_id: int) -> CustomFeedRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, owner_id, name, description, filter_rules, created_at, updated_at
+                FROM custom_feeds
+                WHERE id = %s
+                """,
+                (custom_feed_id,),
+            )
+            row = cur.fetchone()
+        return self.row_to_custom_feed(row)
+
+    def update_custom_feed(
+        self,
+        custom_feed_id: int,
+        name: str | None,
+        description: str | None,
+        filter_rules: dict[str, Any] | None,
+    ) -> CustomFeedRow | None:
+        assignments: list[str] = []
+        params: list[Any] = []
+
+        if name is not None:
+            assignments.append("name = %s")
+            params.append(name)
+        if description is not None:
+            assignments.append("description = %s")
+            params.append(description)
+        if filter_rules is not None:
+            assignments.append("filter_rules = %s")
+            params.append(json.dumps(filter_rules))
+
+        set_clause = ", ".join(assignments)
+        if set_clause:
+            set_clause = f"{set_clause}, "
+
+        params.append(custom_feed_id)
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE custom_feeds
+                SET {set_clause}updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, owner_id, name, description, filter_rules, created_at, updated_at
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+        return self.row_to_custom_feed(row)
+
+    def delete_custom_feed(self, custom_feed_id: int) -> bool:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM custom_feeds WHERE id = %s", (custom_feed_id,))
+            return cur.rowcount > 0
+
+    def get_articles_for_custom_feed(
+        self,
+        filter_rules: dict[str, Any],
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ArticleRow]:
+        """Fetch articles matching the custom feed filter rules."""
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        include_sources = filter_rules.get("include_sources", [])
+        exclude_sources = filter_rules.get("exclude_sources", [])
+        include_keywords = filter_rules.get("include_keywords", [])
+        exclude_keywords = filter_rules.get("exclude_keywords", [])
+        include_newspapers = filter_rules.get("include_newspapers", [])
+        min_popularity = filter_rules.get("min_popularity")
+
+        # Filter by included sources (articles in newspapers linked to these sources)
+        if include_sources:
+            placeholders = ", ".join(["%s"] * len(include_sources))
+            clauses.append(
+                f"""
+                EXISTS (
+                    SELECT 1
+                    FROM newspaper_articles AS na
+                    JOIN newspapers AS n ON n.id = na.newspaper_id
+                    WHERE na.article_id = a.id AND n.source_id IN ({placeholders})
+                )
+                """
+            )
+            params.extend(include_sources)
+
+        # Filter by excluded sources
+        if exclude_sources:
+            placeholders = ", ".join(["%s"] * len(exclude_sources))
+            clauses.append(
+                f"""
+                NOT EXISTS (
+                    SELECT 1
+                    FROM newspaper_articles AS na
+                    JOIN newspapers AS n ON n.id = na.newspaper_id
+                    WHERE na.article_id = a.id AND n.source_id IN ({placeholders})
+                )
+                """
+            )
+            params.extend(exclude_sources)
+
+        # Filter by included newspapers
+        if include_newspapers:
+            placeholders = ", ".join(["%s"] * len(include_newspapers))
+            clauses.append(
+                f"""
+                EXISTS (
+                    SELECT 1
+                    FROM newspaper_articles AS na
+                    WHERE na.article_id = a.id AND na.newspaper_id IN ({placeholders})
+                )
+                """
+            )
+            params.extend(include_newspapers)
+
+        # Filter by included keywords (match in title or content)
+        if include_keywords:
+            keyword_clauses = []
+            for keyword in include_keywords:
+                keyword_clauses.append("(a.title ILIKE %s OR a.content ILIKE %s)")
+                pattern = f"%{keyword}%"
+                params.extend([pattern, pattern])
+            clauses.append(f"({' OR '.join(keyword_clauses)})")
+
+        # Filter by excluded keywords
+        if exclude_keywords:
+            for keyword in exclude_keywords:
+                clauses.append("(a.title NOT ILIKE %s AND (a.content IS NULL OR a.content NOT ILIKE %s))")
+                pattern = f"%{keyword}%"
+                params.extend([pattern, pattern])
+
+        # Filter by minimum popularity
+        if min_popularity is not None:
+            clauses.append("COALESCE(f.popularity, 0) >= %s")
+            params.append(min_popularity)
+
+        sql = [
+            """
+            SELECT
+                a.id,
+                a.title,
+                a.content,
+                a.url,
+                a.owner_id,
+                COALESCE(f.popularity, 0) AS popularity,
+                a.created_at,
+                a.updated_at,
+                COALESCE(
+                    ARRAY(
+                        SELECT na2.newspaper_id
+                        FROM newspaper_articles AS na2
+                        WHERE na2.article_id = a.id
+                        ORDER BY na2.newspaper_id
+                    ),
+                    ARRAY[]::INTEGER[]
+                ) AS newspaper_ids
+            FROM articles AS a
+            LEFT JOIN (
+                SELECT article_id, COUNT(*) AS popularity
+                FROM article_favorites
+                GROUP BY article_id
+            ) AS f ON f.article_id = a.id
+            """
+        ]
+
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+
+        sql.append("ORDER BY a.created_at DESC")
+        sql.append("LIMIT %s OFFSET %s")
+        params.extend([limit, offset])
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+
+        results: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                results.append(article)
         return results

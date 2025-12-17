@@ -41,11 +41,13 @@ class InMemoryAggregatorRepository:
         self._next_article_id = 1
         self._next_source_id = 1
         self._next_notification_id = 1
+        self._next_custom_feed_id = 1
         self._newspapers: dict[int, dict[str, object]] = {}
         self._articles: dict[int, dict[str, object]] = {}
         self._sources: dict[int, dict[str, object]] = {}
         self._followed_sources: dict[int, set[int]] = {}
         self._notifications: dict[int, dict[str, object]] = {}
+        self._custom_feeds: dict[int, dict[str, object]] = {}
 
     def _now(self) -> datetime:
         return datetime.now(UTC)
@@ -476,6 +478,144 @@ class InMemoryAggregatorRepository:
             return None
         record["is_read"] = True
         return self._clone_notification(record)
+
+    # ---- Custom Feeds ----
+    def _clone_custom_feed(self, record: dict[str, object]) -> dict[str, object]:
+        clone = record.copy()
+        clone["filter_rules"] = dict(record.get("filter_rules", {}))
+        return clone
+
+    def create_custom_feed(
+        self,
+        owner_id: int,
+        name: str,
+        description: str | None,
+        filter_rules: dict[str, object],
+    ) -> dict[str, object]:
+        custom_feed_id = self._next_custom_feed_id
+        self._next_custom_feed_id += 1
+        timestamp = self._now()
+        record = {
+            "id": custom_feed_id,
+            "owner_id": owner_id,
+            "name": name,
+            "description": description,
+            "filter_rules": dict(filter_rules),
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        self._custom_feeds[custom_feed_id] = record
+        return self._clone_custom_feed(record)
+
+    def list_custom_feeds(self, owner_id: int) -> list[dict[str, object]]:
+        results = [record for record in self._custom_feeds.values() if record["owner_id"] == owner_id]
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return [self._clone_custom_feed(record) for record in results]
+
+    def get_custom_feed(self, custom_feed_id: int) -> dict[str, object] | None:
+        record = self._custom_feeds.get(custom_feed_id)
+        return self._clone_custom_feed(record) if record else None
+
+    def update_custom_feed(
+        self,
+        custom_feed_id: int,
+        name: str | None,
+        description: str | None,
+        filter_rules: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        record = self._custom_feeds.get(custom_feed_id)
+        if record is None:
+            return None
+        if name is not None:
+            record["name"] = name
+        if description is not None:
+            record["description"] = description
+        if filter_rules is not None:
+            record["filter_rules"] = dict(filter_rules)
+        record["updated_at"] = self._now()
+        return self._clone_custom_feed(record)
+
+    def delete_custom_feed(self, custom_feed_id: int) -> bool:
+        return self._custom_feeds.pop(custom_feed_id, None) is not None
+
+    def get_articles_for_custom_feed(
+        self,
+        filter_rules: dict[str, object],
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[dict[str, object]]:
+        """Fetch articles matching the custom feed filter rules."""
+        include_sources = filter_rules.get("include_sources", [])
+        exclude_sources = filter_rules.get("exclude_sources", [])
+        include_keywords = filter_rules.get("include_keywords", [])
+        exclude_keywords = filter_rules.get("exclude_keywords", [])
+        include_newspapers = filter_rules.get("include_newspapers", [])
+        min_popularity = filter_rules.get("min_popularity")
+
+        results: list[dict[str, object]] = []
+
+        for article in self._articles.values():
+            newspaper_ids = article.get("newspaper_ids", set())
+            popularity = len(article.get("favorite_user_ids", set()))
+
+            # Get source IDs for the article's newspapers
+            article_source_ids: set[int] = set()
+            for np_id in newspaper_ids:
+                newspaper = self._newspapers.get(np_id)
+                if newspaper and newspaper.get("source_id"):
+                    article_source_ids.add(newspaper["source_id"])
+
+            # Filter by included sources
+            if include_sources:
+                if not article_source_ids.intersection(include_sources):
+                    continue
+
+            # Filter by excluded sources
+            if exclude_sources:
+                if article_source_ids.intersection(exclude_sources):
+                    continue
+
+            # Filter by included newspapers
+            if include_newspapers:
+                if not newspaper_ids.intersection(include_newspapers):
+                    continue
+
+            # Filter by included keywords
+            if include_keywords:
+                title = str(article.get("title", "")).lower()
+                content = str(article.get("content", "") or "").lower()
+                found_keyword = False
+                for keyword in include_keywords:
+                    if keyword.lower() in title or keyword.lower() in content:
+                        found_keyword = True
+                        break
+                if not found_keyword:
+                    continue
+
+            # Filter by excluded keywords
+            if exclude_keywords:
+                title = str(article.get("title", "")).lower()
+                content = str(article.get("content", "") or "").lower()
+                excluded = False
+                for keyword in exclude_keywords:
+                    if keyword.lower() in title or keyword.lower() in content:
+                        excluded = True
+                        break
+                if excluded:
+                    continue
+
+            # Filter by minimum popularity
+            if min_popularity is not None and popularity < min_popularity:
+                continue
+
+            results.append(article)
+
+        # Sort by created_at descending
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+
+        # Apply pagination
+        paginated = results[offset : offset + limit]
+        return [self._clone_article(article) for article in paginated]
 
 
 class InMemoryAuthRepository:

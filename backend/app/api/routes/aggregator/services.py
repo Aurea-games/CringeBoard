@@ -31,6 +31,10 @@ class AggregatorService:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Notification not found.",
     )
+    _CUSTOM_FEED_NOT_FOUND = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Custom feed not found.",
+    )
 
     def __init__(self, repository: AggregatorRepository, auth_repository: AuthRepository) -> None:
         self._repository = repository
@@ -567,3 +571,142 @@ class AggregatorService:
 
     def _to_newspaper_model(self, record: dict[str, Any]) -> schemas.Newspaper:
         return schemas.Newspaper.model_validate(self._inject_public_url(record))
+
+    # ---- Custom Feeds ----
+    def list_custom_feeds(self, owner_email: str) -> list[schemas.CustomFeed]:
+        owner_id = self.get_user_id(owner_email)
+        rows = self._repository.list_custom_feeds(owner_id)
+        return [schemas.CustomFeed.model_validate(row) for row in rows]
+
+    def create_custom_feed(
+        self,
+        owner_email: str,
+        payload: schemas.CustomFeedCreate,
+    ) -> schemas.CustomFeed:
+        owner_id = self.get_user_id(owner_email)
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Name must not be empty.",
+            )
+        description = payload.description.strip() if payload.description else None
+        if description == "":
+            description = None
+        filter_rules = payload.filter_rules.model_dump()
+        record = self._repository.create_custom_feed(
+            owner_id=owner_id,
+            name=name,
+            description=description,
+            filter_rules=filter_rules,
+        )
+        return schemas.CustomFeed.model_validate(record)
+
+    def get_custom_feed(self, custom_feed_id: int, owner_email: str) -> schemas.CustomFeed:
+        owner_id = self.get_user_id(owner_email)
+        record = self._repository.get_custom_feed(custom_feed_id)
+        if record is None:
+            raise self._CUSTOM_FEED_NOT_FOUND
+        self.ensure_ownership(record["owner_id"], owner_id, "view this custom feed")
+        return schemas.CustomFeed.model_validate(record)
+
+    def update_custom_feed(
+        self,
+        custom_feed_id: int,
+        owner_email: str,
+        payload: schemas.CustomFeedUpdate,
+    ) -> schemas.CustomFeed:
+        owner_id = self.get_user_id(owner_email)
+        current = self._repository.get_custom_feed(custom_feed_id)
+        if current is None:
+            raise self._CUSTOM_FEED_NOT_FOUND
+        self.ensure_ownership(current["owner_id"], owner_id, "modify this custom feed")
+
+        updates = payload.model_dump(exclude_unset=True)
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one field must be provided for update.",
+            )
+
+        name = updates.get("name")
+        description = updates.get("description")
+        filter_rules = updates.get("filter_rules")
+
+        if isinstance(name, str):
+            name = name.strip()
+            if not name:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Name must not be empty.",
+                )
+        if isinstance(description, str):
+            description = description.strip()
+            if not description:
+                description = None
+
+        filter_rules_dict = None
+        if filter_rules is not None:
+            filter_rules_dict = filter_rules
+
+        record = self._repository.update_custom_feed(
+            custom_feed_id=custom_feed_id,
+            name=name,
+            description=description,
+            filter_rules=filter_rules_dict,
+        )
+        if record is None:
+            raise self._CUSTOM_FEED_NOT_FOUND
+        return schemas.CustomFeed.model_validate(record)
+
+    def delete_custom_feed(self, custom_feed_id: int, owner_email: str) -> None:
+        owner_id = self.get_user_id(owner_email)
+        current = self._repository.get_custom_feed(custom_feed_id)
+        if current is None:
+            raise self._CUSTOM_FEED_NOT_FOUND
+        self.ensure_ownership(current["owner_id"], owner_id, "delete this custom feed")
+
+        if not self._repository.delete_custom_feed(custom_feed_id):
+            raise self._CUSTOM_FEED_NOT_FOUND
+
+    def get_custom_feed_articles(
+        self,
+        custom_feed_id: int,
+        owner_email: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> schemas.CustomFeedWithArticles:
+        owner_id = self.get_user_id(owner_email)
+        record = self._repository.get_custom_feed(custom_feed_id)
+        if record is None:
+            raise self._CUSTOM_FEED_NOT_FOUND
+        self.ensure_ownership(record["owner_id"], owner_id, "view this custom feed")
+
+        filter_rules = record["filter_rules"]
+        article_rows = self._repository.get_articles_for_custom_feed(
+            filter_rules=filter_rules,
+            limit=limit,
+            offset=offset,
+        )
+        articles = [schemas.Article.model_validate(row) for row in article_rows]
+
+        custom_feed = schemas.CustomFeed.model_validate(record)
+        return schemas.CustomFeedWithArticles(
+            **custom_feed.model_dump(),
+            articles=articles,
+        )
+
+    def preview_custom_feed(
+        self,
+        owner_email: str,
+        filter_rules: schemas.CustomFeedFilterRules,
+        limit: int = 20,
+    ) -> list[schemas.Article]:
+        """Preview articles that would match the given filter rules without saving."""
+        self.get_user_id(owner_email)  # Validate user exists
+        article_rows = self._repository.get_articles_for_custom_feed(
+            filter_rules=filter_rules.model_dump(),
+            limit=limit,
+            offset=0,
+        )
+        return [schemas.Article.model_validate(row) for row in article_rows]

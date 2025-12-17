@@ -234,6 +234,34 @@ def ensure_schema() -> None:
                     ON notifications (user_id, is_read, created_at DESC);
                 """
             )
+            # Custom feeds table - user-defined feeds with filter rules
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS custom_feeds (
+                    id SERIAL PRIMARY KEY,
+                    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    -- Filter rules stored as JSONB for flexibility
+                    -- Structure: {
+                    --   "include_sources": [source_id, ...],
+                    --   "exclude_sources": [source_id, ...],
+                    --   "include_keywords": ["keyword", ...],
+                    --   "exclude_keywords": ["keyword", ...],
+                    --   "include_newspapers": [newspaper_id, ...],
+                    --   "min_popularity": int | null
+                    -- }
+                    filter_rules JSONB NOT NULL DEFAULT '{}',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_custom_feeds_owner_id ON custom_feeds (owner_id);
+                """
+            )
 
 
 @contextmanager
