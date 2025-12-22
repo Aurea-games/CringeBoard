@@ -1,10 +1,32 @@
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
+
+# Set DATABASE_URL before any app imports to prevent RuntimeError
+os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+
+# Mock psycopg.connect BEFORE importing any app modules
+# This prevents ensure_schema() from trying to connect to a real database
+_mock_cursor = MagicMock()
+_mock_cursor.__enter__ = MagicMock(return_value=_mock_cursor)
+_mock_cursor.__exit__ = MagicMock(return_value=False)
+
+_mock_connection = MagicMock()
+_mock_connection.__enter__ = MagicMock(return_value=_mock_connection)
+_mock_connection.__exit__ = MagicMock(return_value=False)
+_mock_connection.cursor = MagicMock(return_value=_mock_cursor)
+
+# Patch psycopg before any imports
+import psycopg
+
+_original_connect = psycopg.connect
+psycopg.connect = MagicMock(return_value=_mock_connection)
 
 import pytest
 from fastapi import HTTPException, status
@@ -710,7 +732,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
 
     from app.api.routes.aggregator import dependencies as aggregator_dependencies
     from app.api.routes.aggregator.services import AggregatorService
-    from app.api.routes.auth import delete, dependencies, login, refresh, register
+    from app.api.routes.auth import delete, dependencies, login, profile, refresh, register
     from app.main import create_application
 
     repository = InMemoryAuthRepository()
@@ -724,6 +746,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     monkeypatch.setattr(register, "auth_service", auth_service)
     monkeypatch.setattr(refresh, "auth_service", auth_service)
     monkeypatch.setattr(delete, "auth_service", auth_service)
+    monkeypatch.setattr(profile, "auth_repository", repository)
 
     aggregator_repository = InMemoryAggregatorRepository()
     aggregator_service = AggregatorService(aggregator_repository, repository)
