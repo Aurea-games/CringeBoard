@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
 
 import pytest
 from app.api.routes.aggregator import schemas
@@ -30,7 +29,7 @@ class MockAggregatorRepository:
         self.next_custom_feed_id = 1
 
     def _now(self):
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
     def create_newspaper(self, owner_id, title, description, source_id=None):
         nid = self.next_newspaper_id

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 from app.api.routes.auth.services import AuthService, PasswordHasher
 from fastapi import HTTPException
@@ -248,9 +246,8 @@ class TestAuthService:
         repo.create_user("user@valid.com", "hashed")
 
         # Manually remove from users dict to simulate delete failure
-        user_id = repo.get_user_id("user@valid.com")
+        _ = repo.get_user_id("user@valid.com")
         # Make delete_user return False by manipulating state
-        original_delete = repo.delete_user
         repo.delete_user = lambda uid: False
 
         with pytest.raises(HTTPException) as exc_info:
@@ -371,7 +368,7 @@ class TestPasswordHasherEdgeCases:
 
     def test_verify_unicode_password(self):
         hasher = PasswordHasher()
-        password = "пароль123"
+        password = "пароль123"  # noqa: RUF001
         hashed = hasher.hash(password)
         assert hasher.verify(password, hashed) is True
 

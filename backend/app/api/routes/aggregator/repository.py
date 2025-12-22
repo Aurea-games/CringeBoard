@@ -130,7 +130,7 @@ class AggregatorRepository:
     def _normalize_id_list(raw_ids: Any) -> list[int]:
         if raw_ids is None:
             return []
-        if isinstance(raw_ids, (list, tuple, set)):
+        if isinstance(raw_ids, list | tuple | set):
             result: list[int] = []
             for value in raw_ids:
                 try:
@@ -151,7 +151,7 @@ class AggregatorRepository:
         if isinstance(raw_keywords, str):
             keywords = [raw_keywords]
         result: list[str] = []
-        if isinstance(keywords, (list, tuple, set)):
+        if isinstance(keywords, list | tuple | set):
             for keyword in keywords:
                 if not isinstance(keyword, str):
                     continue

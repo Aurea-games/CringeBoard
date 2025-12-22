@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
 
 import pytest
 from app.api.routes.aggregator.repository import AggregatorRepository
@@ -74,7 +72,7 @@ class TestRowConversions:
         assert result is None
 
     def test_row_to_newspaper_converts_row(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = (1, "Title", "Description", 10, True, "token123", now, now, 5)
         result = AggregatorRepository.row_to_newspaper(row)
         assert result == {
@@ -106,7 +104,7 @@ class TestRowConversions:
         assert result is None
 
     def test_row_to_article_converts_row(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = (1, "Article Title", "Content", "http://example.com", 10, 5, now, now, [1, 2])
         result = AggregatorRepository.row_to_article(row)
         assert result == {
@@ -126,7 +124,7 @@ class TestRowConversions:
         assert result is None
 
     def test_row_to_source_converts_row_without_is_followed(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = (1, "Source Name", "http://feed.url", "Description", "active", now, now)
         result = AggregatorRepository.row_to_source(row)
         assert result == {
@@ -141,7 +139,7 @@ class TestRowConversions:
         }
 
     def test_row_to_source_converts_row_with_is_followed(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = (1, "Source Name", "http://feed.url", "Description", "active", now, now, True)
         result = AggregatorRepository.row_to_source(row)
         assert result["is_followed"] is True
@@ -151,7 +149,7 @@ class TestRowConversions:
         assert result is None
 
     def test_row_to_notification_converts_row(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         row = (1, 10, 5, 100, 50, "New article!", False, now)
         result = AggregatorRepository.row_to_notification(row)
         assert result == {
@@ -170,7 +168,7 @@ class TestRowConversions:
         assert result is None
 
     def test_row_to_custom_feed_converts_row_with_dict(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         filter_rules = {"include_keywords": ["python"]}
         row = (1, 10, "My Feed", "Description", filter_rules, now, now)
         result = AggregatorRepository.row_to_custom_feed(row)
@@ -185,7 +183,7 @@ class TestRowConversions:
         }
 
     def test_row_to_custom_feed_converts_row_with_json_string(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         filter_rules_json = '{"include_keywords": ["python"]}'
         row = (1, 10, "My Feed", "Description", filter_rules_json, now, now)
         result = AggregatorRepository.row_to_custom_feed(row)
@@ -196,7 +194,7 @@ class TestNewspaperOperations:
     """Test newspaper CRUD operations."""
 
     def test_create_newspaper_success(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Test Paper", "A description", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -208,7 +206,7 @@ class TestNewspaperOperations:
         assert result["owner_id"] == 10
 
     def test_create_newspaper_with_source_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Test Paper", "Desc", 10, False, None, now, now, 5)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -234,7 +232,7 @@ class TestNewspaperOperations:
         assert result == []
 
     def test_search_newspapers_with_owner_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Paper", "Desc", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -245,7 +243,7 @@ class TestNewspaperOperations:
         assert result[0]["owner_id"] == 10
 
     def test_search_newspapers_with_search_term(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Python News", "Desc", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -263,7 +261,7 @@ class TestNewspaperOperations:
         assert result == []
 
     def test_find_newspaper_by_title(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "My Paper", "Desc", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -283,7 +281,7 @@ class TestNewspaperOperations:
         assert result is None
 
     def test_get_newspaper(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Paper", "Desc", 10, True, "token", now, now, 5)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -303,7 +301,7 @@ class TestNewspaperOperations:
         assert result is None
 
     def test_update_newspaper_with_title_only(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "New Title", "Desc", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -314,7 +312,7 @@ class TestNewspaperOperations:
         assert result["title"] == "New Title"
 
     def test_update_newspaper_with_description(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Title", "New Desc", 10, False, None, now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -324,7 +322,7 @@ class TestNewspaperOperations:
         assert result is not None
 
     def test_update_newspaper_with_source_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Title", "Desc", 10, False, None, now, now, 5)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -362,7 +360,7 @@ class TestNewspaperOperations:
         assert result is False
 
     def test_update_newspaper_publication(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Paper", "Desc", 10, True, "new-token", now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -383,7 +381,7 @@ class TestNewspaperOperations:
         assert result is None
 
     def test_get_newspaper_by_token(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Public Paper", "Desc", 10, True, "token123", now, now, None)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -416,7 +414,7 @@ class TestArticleOperations:
         assert result == []
 
     def test_search_articles_with_newspaper_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -426,7 +424,7 @@ class TestArticleOperations:
         assert len(result) == 1
 
     def test_search_articles_with_owner_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -436,7 +434,7 @@ class TestArticleOperations:
         assert len(result) == 1
 
     def test_search_articles_with_search_term(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Python Tutorial", "Learn Python", "http://url.com", 10, 0, now, now, [])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -446,7 +444,7 @@ class TestArticleOperations:
         assert len(result) == 1
 
     def test_search_articles_order_by_popularity(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(
             rows=[
                 (1, "Popular", "Content", "http://url.com", 10, 100, now, now, []),
@@ -461,7 +459,7 @@ class TestArticleOperations:
         assert len(result) == 2
 
     def test_create_article_success(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # First call returns article id, second call (fetch_article) returns full article
         cursor = MockCursor(rows=[(1,), (1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
@@ -483,7 +481,7 @@ class TestArticleOperations:
             repo.create_article(owner_id=10, newspaper_id=1, title="Article", content=None, url=None)
 
     def test_get_article(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1, 2])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -503,7 +501,7 @@ class TestArticleOperations:
         assert result is None
 
     def test_get_related_articles(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(2, "Related", "Content", "http://url.com", 10, 3, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -514,7 +512,7 @@ class TestArticleOperations:
         assert result[0]["id"] == 2
 
     def test_add_article_favorite(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 1, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -524,7 +522,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_remove_article_favorite(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -534,7 +532,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_list_favorite_articles(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -544,7 +542,7 @@ class TestArticleOperations:
         assert len(result) == 1
 
     def test_add_read_later(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -554,7 +552,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_remove_read_later(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -564,7 +562,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_list_read_later_articles(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -574,7 +572,7 @@ class TestArticleOperations:
         assert len(result) == 1
 
     def test_find_article_by_url(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://example.com/article", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -594,7 +592,7 @@ class TestArticleOperations:
         assert result is None
 
     def test_update_article_with_title(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # First fetchone for the UPDATE RETURNING, second for fetch_article
         cursor = MockCursor(rows=[(1,), (1, "New Title", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
@@ -605,7 +603,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_update_article_with_content(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1,), (1, "Title", "New Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -615,7 +613,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_update_article_with_url(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1,), (1, "Title", "Content", "http://newurl.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -634,7 +632,7 @@ class TestArticleOperations:
         assert result is None
 
     def test_assign_article_to_newspaper(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1, 2])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -644,7 +642,7 @@ class TestArticleOperations:
         assert result is not None
 
     def test_detach_article_from_newspaper(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 0, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -676,7 +674,7 @@ class TestSourceOperations:
     """Test source CRUD operations."""
 
     def test_create_source_success(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Description", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -687,7 +685,7 @@ class TestSourceOperations:
         assert result["name"] == "Source"
 
     def test_create_source_with_status(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", None, "inactive", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -705,7 +703,7 @@ class TestSourceOperations:
             repo.create_source(name="Source", feed_url=None, description=None)
 
     def test_list_sources(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -715,7 +713,7 @@ class TestSourceOperations:
         assert len(result) == 1
 
     def test_list_sources_with_status_filter(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -725,7 +723,7 @@ class TestSourceOperations:
         assert len(result) == 1
 
     def test_list_sources_with_search(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Python Feed", "http://feed.url", "Desc", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -735,7 +733,7 @@ class TestSourceOperations:
         assert len(result) == 1
 
     def test_list_sources_with_follower_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now, True)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -746,7 +744,7 @@ class TestSourceOperations:
         assert result[0]["is_followed"] is True
 
     def test_get_source(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -757,7 +755,7 @@ class TestSourceOperations:
         assert result["id"] == 1
 
     def test_get_source_with_follower_id(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now, True)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -777,7 +775,7 @@ class TestSourceOperations:
         assert result is None
 
     def test_update_source_with_name(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "New Name", "http://feed.url", "Desc", "active", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -788,7 +786,7 @@ class TestSourceOperations:
         assert result["name"] == "New Name"
 
     def test_update_source_with_all_fields(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "New Name", "http://new.url", "New Desc", "inactive", now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -809,7 +807,7 @@ class TestSourceOperations:
         assert result is None
 
     def test_follow_source(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # First for INSERT, second for get_source
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now, True)])
         factory = create_mock_connection_factory(cursor)
@@ -820,7 +818,7 @@ class TestSourceOperations:
         assert result is not None
 
     def test_unfollow_source(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now, False)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -830,7 +828,7 @@ class TestSourceOperations:
         assert result is not None
 
     def test_list_followed_sources(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Source", "http://feed.url", "Desc", "active", now, now, True)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -855,7 +853,7 @@ class TestNotificationOperations:
         assert result == 3
 
     def test_list_notifications(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 5, 1, 10, 5, "Message", False, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -865,7 +863,7 @@ class TestNotificationOperations:
         assert len(result) == 1
 
     def test_list_notifications_include_read(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 5, 1, 10, 5, "Message", True, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -875,7 +873,7 @@ class TestNotificationOperations:
         assert len(result) == 1
 
     def test_mark_notification_read(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 5, 1, 10, 5, "Message", True, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -899,7 +897,7 @@ class TestCustomFeedOperations:
     """Test custom feed CRUD operations."""
 
     def test_create_custom_feed_success(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         filter_rules = {"include_keywords": ["python"]}
         cursor = MockCursor(rows=[(1, 10, "My Feed", "Description", filter_rules, now, now)])
         factory = create_mock_connection_factory(cursor)
@@ -921,7 +919,7 @@ class TestCustomFeedOperations:
             repo.create_custom_feed(owner_id=10, name="Feed", description=None, filter_rules={})
 
     def test_list_custom_feeds(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 10, "Feed 1", "Desc", {}, now, now), (2, 10, "Feed 2", None, {}, now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -931,7 +929,7 @@ class TestCustomFeedOperations:
         assert len(result) == 2
 
     def test_get_custom_feed(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 10, "My Feed", "Desc", {"include_keywords": ["python"]}, now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -951,7 +949,7 @@ class TestCustomFeedOperations:
         assert result is None
 
     def test_update_custom_feed_with_name(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 10, "New Name", "Desc", {}, now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -962,7 +960,7 @@ class TestCustomFeedOperations:
         assert result["name"] == "New Name"
 
     def test_update_custom_feed_with_description(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, 10, "Feed", "New Desc", {}, now, now)])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -972,7 +970,7 @@ class TestCustomFeedOperations:
         assert result is not None
 
     def test_update_custom_feed_with_filter_rules(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         new_rules = {"exclude_keywords": ["spam"]}
         cursor = MockCursor(rows=[(1, 10, "Feed", "Desc", new_rules, now, now)])
         factory = create_mock_connection_factory(cursor)
@@ -1010,7 +1008,7 @@ class TestCustomFeedOperations:
         assert result is False
 
     def test_get_articles_for_custom_feed_with_include_sources(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1020,7 +1018,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_exclude_sources(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1030,7 +1028,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_include_newspapers(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1040,7 +1038,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_include_keywords(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Python Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1050,7 +1048,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_exclude_keywords(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Article", "Content", "http://url.com", 10, 5, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1060,7 +1058,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_min_popularity(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Popular Article", "Content", "http://url.com", 10, 10, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)
@@ -1070,7 +1068,7 @@ class TestCustomFeedOperations:
         assert len(result) == 1
 
     def test_get_articles_for_custom_feed_with_all_filters(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cursor = MockCursor(rows=[(1, "Python News", "Great content", "http://url.com", 10, 15, now, now, [1])])
         factory = create_mock_connection_factory(cursor)
         repo = AggregatorRepository(connection_factory=factory)

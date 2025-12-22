@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-import pytest
 from app.core.config import Settings, _parse_origins, get_settings
 
 

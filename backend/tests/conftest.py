@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
 import os
@@ -6,7 +7,7 @@ from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Set DATABASE_URL before any app imports to prevent RuntimeError
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")

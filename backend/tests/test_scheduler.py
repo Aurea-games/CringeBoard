@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from app.scheduler import build_scrapers, main
@@ -149,7 +148,7 @@ class TestMain:
         with (
             patch("app.scheduler.get_settings", return_value=mock_settings),
             patch("app.scheduler.build_scrapers", return_value=mock_scrapers),
-            patch("app.scheduler.FeedAggregator", return_value=mock_aggregator) as mock_agg_class,
+            patch("app.scheduler.FeedAggregator", return_value=mock_aggregator) as _,
             patch("app.scheduler.AggregatorRepository"),
             patch("app.scheduler.AuthRepository"),
             patch("app.scheduler.PasswordHasher"),
@@ -176,7 +175,7 @@ class TestMain:
             patch("app.scheduler.AuthRepository"),
             patch("app.scheduler.PasswordHasher"),
             patch("app.scheduler.time.sleep", side_effect=[None, KeyboardInterrupt]),
-            patch("builtins.print") as mock_print,
+            patch("builtins.print") as _,
         ):
             with pytest.raises(KeyboardInterrupt):
                 main()

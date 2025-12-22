@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from app.api.routes.auth.dependencies import get_bearer_scheme, get_current_email
@@ -56,6 +56,6 @@ class TestGetCurrentEmail:
         with patch("app.api.routes.auth.dependencies.auth_repository") as mock_repo:
             mock_repo.get_email_by_access_token.return_value = "user@test.com"
 
-            result = get_current_email(credentials)
+            _ = get_current_email(credentials)
 
             mock_repo.get_email_by_access_token.assert_called_once_with("token_with_spaces")

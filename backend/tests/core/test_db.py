@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,7 +39,7 @@ class TestGetConnection:
             with patch("app.core.db.DATABASE_DSN", "postgresql://test"):
                 from app.core.db import get_connection
 
-                with get_connection() as conn:
+                with get_connection() as _:
                     pass
 
                 mock_conn.commit.assert_called_once()
@@ -54,7 +53,7 @@ class TestGetConnection:
                 from app.core.db import get_connection
 
                 with pytest.raises(ValueError):
-                    with get_connection() as conn:
+                    with get_connection() as _:
                         raise ValueError("Test error")
 
                 mock_conn.rollback.assert_called_once()

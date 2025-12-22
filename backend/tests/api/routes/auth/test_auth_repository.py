@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
-from unittest.mock import MagicMock, patch
-
-import pytest
-from app.api.routes.auth.repository import AuthRepository, UserPreferencesRepositoryMixin
+from app.api.routes.auth.repository import AuthRepository
 
 
 class MockCursor:

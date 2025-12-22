@@ -19,7 +19,7 @@ class MockScrapedArticle:
 class MockScraper:
     """Mock scraper for testing."""
 
-    def __init__(self, title: str, description: str | None = None, articles: list = None):
+    def __init__(self, title: str, description: str | None = None, articles: list | None = None):
         self._title = title
         self._description = description
         self._articles = articles or []
