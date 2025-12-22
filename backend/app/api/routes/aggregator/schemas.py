@@ -110,3 +110,44 @@ class Notification(BaseModel):
     message: str
     is_read: bool = False
     created_at: datetime
+
+
+class CustomFeedFilterRules(BaseModel):
+    include_sources: list[int] = Field(default_factory=list)
+    exclude_sources: list[int] = Field(default_factory=list)
+    include_newspapers: list[int] = Field(default_factory=list)
+    include_keywords: list[str] = Field(default_factory=list)
+    exclude_keywords: list[str] = Field(default_factory=list)
+    min_popularity: int | None = Field(None, ge=0)
+
+
+class CustomFeedCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=2000)
+    filter_rules: CustomFeedFilterRules = Field(default_factory=CustomFeedFilterRules)
+
+
+class CustomFeedUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=2000)
+    filter_rules: CustomFeedFilterRules | None = None
+
+
+class CustomFeed(BaseModel):
+    id: int
+    owner_id: int
+    name: str
+    description: str | None = None
+    filter_rules: CustomFeedFilterRules = Field(default_factory=CustomFeedFilterRules)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomFeedWithArticles(CustomFeed):
+    articles: list[Article] = Field(default_factory=list)
+
+    @classmethod
+    def from_parts(cls, feed_data: dict[str, Any], articles: list[dict[str, Any]]) -> CustomFeedWithArticles:
+        base = CustomFeed.model_validate(feed_data)
+        article_models = [Article.model_validate(article) for article in articles]
+        return cls(**base.model_dump(), articles=article_models)
