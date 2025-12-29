@@ -174,6 +174,66 @@ def ensure_schema() -> None:
                 CREATE INDEX IF NOT EXISTS ix_newspaper_articles_article_id ON newspaper_articles (article_id);
                 """
             )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS sources (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    feed_url TEXT,
+                    description TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_sources_name ON sources (LOWER(name));
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE newspapers
+                ADD COLUMN IF NOT EXISTS source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL;
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_followed_sources (
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (user_id, source_id)
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_user_followed_sources_source_id
+                    ON user_followed_sources (source_id);
+                """
+            )
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+                    article_id INTEGER REFERENCES articles(id) ON DELETE CASCADE,
+                    newspaper_id INTEGER REFERENCES newspapers(id) ON DELETE CASCADE,
+                    message TEXT NOT NULL,
+                    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            cur.execute(
+                """
+                CREATE INDEX IF NOT EXISTS ix_notifications_user_id_created
+                    ON notifications (user_id, is_read, created_at DESC);
+                """
+            )
 
 
 @contextmanager

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.api.routes.auth import dependencies as auth_dependencies
@@ -93,6 +93,39 @@ def remove_read_later(
 ) -> Response:
     aggregator_dependencies.aggregator_service.remove_article_from_read_later(article_id, current_email)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/sources",
+    response_model=list[schemas.Source],
+)
+def list_followed_sources(current_email: CurrentUserEmail) -> list[schemas.Source]:
+    return aggregator_dependencies.aggregator_service.list_followed_sources(current_email)
+
+
+@router.get(
+    "/notifications",
+    response_model=list[schemas.Notification],
+)
+def list_notifications(
+    current_email: CurrentUserEmail,
+    include_read: bool = Query(default=False),
+) -> list[schemas.Notification]:
+    return aggregator_dependencies.aggregator_service.list_notifications(
+        current_email,
+        include_read=include_read,
+    )
+
+
+@router.post(
+    "/notifications/{notification_id}/read",
+    response_model=schemas.Notification,
+)
+def mark_notification_read(
+    notification_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Notification:
+    return aggregator_dependencies.aggregator_service.mark_notification_read(notification_id, current_email)
 
 
 __all__ = ["router"]

@@ -1,10 +1,33 @@
+# ruff: noqa: E402
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
+
+# Set DATABASE_URL before any app imports to prevent RuntimeError
+os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+
+# Mock psycopg.connect BEFORE importing any app modules
+# This prevents ensure_schema() from trying to connect to a real database
+_mock_cursor = MagicMock()
+_mock_cursor.__enter__ = MagicMock(return_value=_mock_cursor)
+_mock_cursor.__exit__ = MagicMock(return_value=False)
+
+_mock_connection = MagicMock()
+_mock_connection.__enter__ = MagicMock(return_value=_mock_connection)
+_mock_connection.__exit__ = MagicMock(return_value=False)
+_mock_connection.cursor = MagicMock(return_value=_mock_cursor)
+
+# Patch psycopg before any imports
+import psycopg
+
+_original_connect = psycopg.connect
+psycopg.connect = MagicMock(return_value=_mock_connection)
 
 import pytest
 from fastapi import HTTPException, status
@@ -39,13 +62,24 @@ class InMemoryAggregatorRepository:
     def __init__(self) -> None:
         self._next_newspaper_id = 1
         self._next_article_id = 1
+        self._next_source_id = 1
+        self._next_notification_id = 1
         self._newspapers: dict[int, dict[str, object]] = {}
         self._articles: dict[int, dict[str, object]] = {}
+        self._sources: dict[int, dict[str, object]] = {}
+        self._followed_sources: dict[int, set[int]] = {}
+        self._notifications: dict[int, dict[str, object]] = {}
 
     def _now(self) -> datetime:
         return datetime.now(UTC)
 
-    def create_newspaper(self, owner_id: int, title: str, description: str | None) -> dict[str, object]:
+    def create_newspaper(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        source_id: int | None = None,
+    ) -> dict[str, object]:
         newspaper_id = self._next_newspaper_id
         self._next_newspaper_id += 1
         timestamp = self._now()
@@ -58,6 +92,7 @@ class InMemoryAggregatorRepository:
             "public_token": None,
             "created_at": timestamp,
             "updated_at": timestamp,
+            "source_id": source_id,
         }
         self._newspapers[newspaper_id] = record
         return record.copy()
@@ -71,6 +106,17 @@ class InMemoryAggregatorRepository:
         clone.pop("read_later_user_ids", None)
         clone.pop("read_later_timestamps", None)
         return clone
+
+    def _clone_source(self, record: dict[str, object], follower_id: int | None = None) -> dict[str, object]:
+        clone = record.copy()
+        if follower_id is not None:
+            clone["is_followed"] = record["id"] in self._followed_sources.get(follower_id, set())
+        else:
+            clone["is_followed"] = False
+        return clone
+
+    def _clone_notification(self, record: dict[str, object]) -> dict[str, object]:
+        return record.copy()
 
     def list_newspapers(self) -> list[dict[str, object]]:
         return self.search_newspapers()
@@ -113,6 +159,8 @@ class InMemoryAggregatorRepository:
         newspaper_id: int,
         title: str | None,
         description: str | None,
+        source_id: int | None = None,
+        update_source_id: bool = False,
     ) -> dict[str, object] | None:
         record = self._newspapers.get(newspaper_id)
         if record is None:
@@ -121,6 +169,8 @@ class InMemoryAggregatorRepository:
             record["title"] = title
         if description is not None:
             record["description"] = description
+        if update_source_id:
+            record["source_id"] = source_id
         record["updated_at"] = self._now()
         return record.copy()
 
@@ -156,6 +206,100 @@ class InMemoryAggregatorRepository:
             if record.get("is_public") and record.get("public_token") == token:
                 return record.copy()
         return None
+
+    # ---- Sources ----
+    def create_source(
+        self,
+        name: str,
+        feed_url: str | None,
+        description: str | None,
+        status: str = "active",
+    ) -> dict[str, object]:
+        source_id = self._next_source_id
+        self._next_source_id += 1
+        timestamp = self._now()
+        record = {
+            "id": source_id,
+            "name": name,
+            "feed_url": feed_url,
+            "description": description,
+            "status": status or "active",
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        self._sources[source_id] = record
+        return self._clone_source(record)
+
+    def list_sources(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        follower_id: int | None = None,
+    ) -> list[dict[str, object]]:
+        results = list(self._sources.values())
+        if status:
+            results = [s for s in results if s.get("status") == status]
+        if search:
+            needle = search.strip().lower()
+            if needle:
+                filtered = []
+                for record in results:
+                    name_match = needle in record["name"].lower()
+                    desc = record.get("description")
+                    desc_match = isinstance(desc, str) and needle in desc.lower()
+                    if name_match or desc_match:
+                        filtered.append(record)
+                results = filtered
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return [self._clone_source(record, follower_id=follower_id) for record in results]
+
+    def get_source(self, source_id: int, follower_id: int | None = None) -> dict[str, object] | None:
+        record = self._sources.get(source_id)
+        return self._clone_source(record, follower_id=follower_id) if record else None
+
+    def update_source(
+        self,
+        source_id: int,
+        name: str | None,
+        feed_url: str | None,
+        description: str | None,
+        status: str | None,
+    ) -> dict[str, object] | None:
+        record = self._sources.get(source_id)
+        if record is None:
+            return None
+        if name is not None:
+            record["name"] = name
+        if feed_url is not None:
+            record["feed_url"] = feed_url
+        if description is not None:
+            record["description"] = description
+        if status is not None:
+            record["status"] = status
+        record["updated_at"] = self._now()
+        return self._clone_source(record)
+
+    def follow_source(self, user_id: int, source_id: int) -> dict[str, object] | None:
+        if source_id not in self._sources:
+            return None
+        self._followed_sources.setdefault(user_id, set()).add(source_id)
+        return self.get_source(source_id, follower_id=user_id)
+
+    def unfollow_source(self, user_id: int, source_id: int) -> dict[str, object] | None:
+        if source_id not in self._sources:
+            return None
+        self._followed_sources.setdefault(user_id, set()).discard(source_id)
+        return self.get_source(source_id, follower_id=user_id)
+
+    def list_followed_sources(self, user_id: int) -> list[dict[str, object]]:
+        followed_ids = self._followed_sources.get(user_id, set())
+        results = []
+        for source_id in followed_ids:
+            record = self._sources.get(source_id)
+            if record:
+                results.append(self._clone_source(record, follower_id=user_id))
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return results
 
     def search_articles(
         self,
@@ -308,6 +452,53 @@ class InMemoryAggregatorRepository:
 
     def delete_article(self, article_id: int) -> bool:
         return self._articles.pop(article_id, None) is not None
+
+    # ---- Notifications ----
+    def create_notifications_for_source_followers(
+        self,
+        source_id: int,
+        message: str,
+        article_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> int:
+        created = 0
+        timestamp = self._now()
+        for user_id, followed in self._followed_sources.items():
+            if source_id not in followed:
+                continue
+            notification_id = self._next_notification_id
+            self._next_notification_id += 1
+            record = {
+                "id": notification_id,
+                "user_id": user_id,
+                "source_id": source_id,
+                "article_id": article_id,
+                "newspaper_id": newspaper_id,
+                "message": message,
+                "is_read": False,
+                "created_at": timestamp,
+            }
+            self._notifications[notification_id] = record
+            created += 1
+        return created
+
+    def list_notifications(self, user_id: int, include_read: bool = False) -> list[dict[str, object]]:
+        results: list[dict[str, object]] = []
+        for record in self._notifications.values():
+            if record["user_id"] != user_id:
+                continue
+            if not include_read and record.get("is_read"):
+                continue
+            results.append(self._clone_notification(record))
+        results.sort(key=lambda item: item["created_at"], reverse=True)
+        return results
+
+    def mark_notification_read(self, user_id: int, notification_id: int) -> dict[str, object] | None:
+        record = self._notifications.get(notification_id)
+        if record is None or record["user_id"] != user_id:
+            return None
+        record["is_read"] = True
+        return self._clone_notification(record)
 
 
 class InMemoryAuthRepository:
@@ -542,7 +733,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
 
     from app.api.routes.aggregator import dependencies as aggregator_dependencies
     from app.api.routes.aggregator.services import AggregatorService
-    from app.api.routes.auth import delete, dependencies, login, refresh, register
+    from app.api.routes.auth import delete, dependencies, login, profile, refresh, register
     from app.main import create_application
 
     repository = InMemoryAuthRepository()
@@ -556,6 +747,7 @@ def auth_test_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, N
     monkeypatch.setattr(register, "auth_service", auth_service)
     monkeypatch.setattr(refresh, "auth_service", auth_service)
     monkeypatch.setattr(delete, "auth_service", auth_service)
+    monkeypatch.setattr(profile, "auth_repository", repository)
 
     aggregator_repository = InMemoryAggregatorRepository()
     aggregator_service = AggregatorService(aggregator_repository, repository)
