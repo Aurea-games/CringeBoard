@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { previewText } from "./utils.js";
 import { ArticleCard } from "./App.jsx";
 
 export default function FavoriteArticle({
-  apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+  apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
+  onFavoritesLoaded,
+  onFavoriteChange,
 }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,13 +26,17 @@ export default function FavoriteArticle({
         }
         const headers = { Authorization: `Bearer ${token}` };
 
-        const url = `${apiBase}/v1/articles/favorite`;
+        const url = `${apiBase}/v1/me/favorites`;
         const res = await fetch(url, { headers, signal: controller.signal });
 
         if (!res.ok) throw new Error("Network error");
 
         const j = await res.json();
-        if (mounted) setArticles(j || []);
+        const parsed = Array.isArray(j) ? j : [];
+        if (mounted) {
+          setArticles(parsed);
+          onFavoritesLoaded?.(parsed);
+        }
       } catch (e) {
         if (mounted) {
           setError(e.message);
@@ -48,7 +53,7 @@ export default function FavoriteArticle({
       mounted = false;
       controller.abort();
     };
-  }, []);
+  }, [apiBase, onFavoritesLoaded]);
 
   return (
     <div
@@ -82,7 +87,13 @@ export default function FavoriteArticle({
                     <ArticleCard
                       key={article.id || article.title}
                       article={article}
-                      onFavoriteToggle={(id) => setArticles(prev => prev.filter(a => a.id !== id))}
+                      isFavorited
+                      onFavoriteToggle={(id, shouldBeFavorite) => {
+                        if (!shouldBeFavorite) {
+                          setArticles((prev) => prev.filter((a) => a.id !== id));
+                        }
+                        onFavoriteChange?.(id, shouldBeFavorite);
+                      }}
                     />
                   ))
                 )}
@@ -98,6 +109,12 @@ export default function FavoriteArticle({
     </div>
   );
 }
+
+FavoriteArticle.propTypes = {
+  apiBase: PropTypes.string,
+  onFavoritesLoaded: PropTypes.func,
+  onFavoriteChange: PropTypes.func,
+};
 
 function Header() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -170,7 +187,7 @@ function Header() {
             </button>
 
             <button
-              onClick={() => (window.location.href = "/favorite")}
+              onClick={() => (window.location.href = "/favorites")}
               style={{ ...styles.createButton, background: "#facc15", color: "black" }}
             >
               Favorites

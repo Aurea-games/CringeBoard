@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 import Login from "./Login.jsx";
@@ -20,7 +20,8 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
       const e = localStorage.getItem("user_email");
       setLoggedIn(!!token);
       setEmail(e || null);
-    } catch {
+    } catch (err) {
+      console.error("Failed to read auth tokens", err);
       setLoggedIn(false);
     }
 
@@ -38,7 +39,9 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user_email");
-    } catch {}
+    } catch (err) {
+      console.error("Failed to clear auth tokens", err);
+    }
     window.location.href = "/";
   }
 
@@ -59,7 +62,7 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
   }
 
   function goFavorites() {
-    window.location.href = "/favorite";
+    window.location.href = "/favorites";
   }
 
   return (
@@ -126,10 +129,14 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
   );
 }
 
-export function ArticleCard({ article, onFavoriteToggle }) {
+export function ArticleCard({ article, isFavorited = false, onFavoriteToggle }) {
   const [flipped, setFlipped] = useState(false);
 
-  const [favorited, setFavorited] = useState(!!article.is_favorited);
+  const [favorited, setFavorited] = useState(isFavorited);
+
+  useEffect(() => {
+    setFavorited(isFavorited);
+  }, [isFavorited]);
 
   function toggleFlip() {
     setFlipped((v) => !v);
@@ -144,28 +151,39 @@ export function ArticleCard({ article, onFavoriteToggle }) {
 
   async function handleFavorite(e) {
     e.stopPropagation();
+    const token = localStorage.getItem("access_token");
+    if (!token) return alert("Login to favorite articles");
+
+    const previousState = favorited;
+    const nextState = !previousState;
+    setFavorited(nextState);
+
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) return alert("Login to favorite articles");
+      const headers = { Authorization: `Bearer ${token}` };
+      let response;
 
-      setFavorited((v) => !v);
-
-      const method = favorited ? "DELETE" : "POST";
-      const action = favorited ? "unfavorite" : "favorite";
-
-      const res = await fetch(`${apiBase}/v1/articles/${article.id}/favorite`, {
-        method: method,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!res.ok) {
-        setFavorited((v) => !v);
-        throw new Error(`Failed to ${action} article`);
+      if (nextState) {
+        headers["Content-Type"] = "application/json";
+        response = await fetch(`${apiBase}/v1/me/favorites`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ article_id: article.id }),
+        });
+      } else {
+        response = await fetch(`${apiBase}/v1/me/favorites/${article.id}`, {
+          method: "DELETE",
+          headers,
+        });
       }
 
-      if (onFavoriteToggle) onFavoriteToggle(article.id);
+      if (!response.ok) {
+        throw new Error(`Failed to ${nextState ? "favorite" : "unfavorite"} article`);
+      }
+
+      if (onFavoriteToggle) onFavoriteToggle(article.id, nextState);
     } catch (err) {
       console.error(err);
+      setFavorited(previousState);
       alert("Could not update favorite status");
     }
   }
@@ -262,6 +280,7 @@ export function ArticleCard({ article, onFavoriteToggle }) {
 
 ArticleCard.propTypes = {
   article: PropTypes.object.isRequired,
+  isFavorited: PropTypes.bool,
   onFavoriteToggle: PropTypes.func,
 };
 
@@ -272,6 +291,60 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPopular, setShowPopular] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
+
+  const syncFavoritesFromList = useCallback((items = []) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    const ids = safeItems
+      .map((item) => item && item.id)
+      .filter((id) => id !== undefined && id !== null);
+    setFavoriteIds(new Set(ids));
+  }, []);
+
+  const handleFavoriteStateChange = useCallback((articleId, shouldBeFavorite) => {
+    if (articleId === undefined || articleId === null) return;
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (shouldBeFavorite) {
+        next.add(articleId);
+      } else {
+        next.delete(articleId);
+      }
+      return next;
+    });
+  }, []);
+
+  const refreshFavoriteIds = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      const response = await fetch(`${apiBase}/v1/me/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to load favorites");
+      }
+
+      const data = await response.json();
+      syncFavoritesFromList(data);
+    } catch (err) {
+      console.error("Failed to refresh favorites", err);
+    }
+  }, [syncFavoritesFromList]);
+
+  useEffect(() => {
+    refreshFavoriteIds();
+  }, [refreshFavoriteIds]);
 
   async function loadPopular() {
     setLoading(true);
@@ -312,7 +385,7 @@ export default function App() {
       } catch (e) {
         if (mounted) {
           setError(e.message);
-          setArticles(mockArticles);
+          setArticles([]);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -338,7 +411,15 @@ export default function App() {
   if (pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
   if (/^\/newspapers\/\d+$/.test(pathname)) return <NewspaperDetail apiBase={apiBase} />;
   // FIX: Change the route path to "/favorites" (plural) to match the header and API
-  if (pathname === "/favorite") return <FavoriteArticle apiBase={apiBase}/>;
+  if (pathname === "/favorites") {
+    return (
+      <FavoriteArticle
+        apiBase={apiBase}
+        onFavoritesLoaded={syncFavoritesFromList}
+        onFavoriteChange={handleFavoriteStateChange}
+      />
+    );
+  }
 
   return (
     <div
@@ -376,7 +457,12 @@ export default function App() {
                   </div>
                 ) : (
                   articles.map((article) => (
-                    <ArticleCard key={article.id || article.title} article={article} />
+                    <ArticleCard
+                      key={article.id || article.title}
+                      article={article}
+                      isFavorited={article.id != null && favoriteIds.has(article.id)}
+                      onFavoriteToggle={handleFavoriteStateChange}
+                    />
                   ))
                 )}
               </div>

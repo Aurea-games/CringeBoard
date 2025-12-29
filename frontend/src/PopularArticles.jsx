@@ -47,7 +47,7 @@ export default function PopularArticles({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [apiBase, query]);
 
   return (
     <div
@@ -193,6 +193,14 @@ function Header({ onSearch }) {
     </header>
   );
 }
+
+PopularArticles.propTypes = {
+  apiBase: PropTypes.string,
+};
+
+Header.propTypes = {
+  onSearch: PropTypes.func.isRequired,
+};
 
 function ArticleCard({ article }) {
   const [flipped, setFlipped] = useState(false);
