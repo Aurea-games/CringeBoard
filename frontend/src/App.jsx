@@ -7,6 +7,8 @@ import CreateNewspaper from "./CreateNewspaper.jsx";
 import NewspaperList from "./NewspaperList.jsx";
 import NewspaperDetail from "./NewspaperDetail.jsx";
 import FavoriteArticle from "./FavoriteArticle.jsx";
+import PublicNewspaper from "./PublicNewspaper.jsx";
+import PublicNewspapers from "./PublicNewspapers.jsx";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
@@ -65,6 +67,10 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
     window.location.href = "/favorites";
   }
 
+  function goPublicNewspapers() {
+    window.location.href = "/public/newspapers";
+  }
+
   return (
     <header style={styles.header}>
       <h1 style={{ margin: 0 }}>CringeBoard</h1>
@@ -108,6 +114,10 @@ function Header({ onSearch, onPopularToggle, showPopular }) {
 
             <button onClick={goFavorites} style={styles.createButton}>
               Favorites
+            </button>
+
+            <button onClick={goPublicNewspapers} style={styles.createButton}>
+              Public newspapers
             </button>
 
             <button onClick={handleLogout} style={styles.logoutButton}>
@@ -420,6 +430,12 @@ export default function App() {
       />
     );
   }
+  if (pathname === "/public/newspapers") {
+    return <PublicNewspapers apiBase={apiBase} />;
+  }
+
+  const publicMatch = typeof window !== "undefined" ? window.location.pathname.match(/^\/public\/newspapers\/(.+)$/) : null;
+  if (publicMatch) return <PublicNewspaper apiBase={apiBase} />;
 
   return (
     <div
