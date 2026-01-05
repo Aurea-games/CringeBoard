@@ -48,6 +48,16 @@ def list_popular_articles(
 
 
 @router.get(
+    "/favorite",
+    response_model=list[schemas.Article],
+)
+def list_my_favorites(
+    current_email: CurrentUserEmail,
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_user_favorites(current_email)
+
+
+@router.get(
     "/{article_id}",
     response_model=schemas.Article,
 )
