@@ -86,16 +86,6 @@ def favorite_article(
 
 @router.delete(
     "/{article_id}/favorite",
-    response_model=schemas.Article,
-)
-def unfavorite_article(
-    article_id: int,
-    current_email: CurrentUserEmail,
-) -> schemas.Article:
-    return aggregator_dependencies.aggregator_service.unfavorite_article(article_id, current_email)
-
-@router.delete(
-    "/{article_id}/favorite",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def unfavorite_article(
