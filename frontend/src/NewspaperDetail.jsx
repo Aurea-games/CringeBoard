@@ -187,6 +187,25 @@ export default function NewspaperDetail({
     }
   }
 
+  async function toggleShare(makePublic) {
+    if (!id) return;
+    try {
+      const res = await fetch(`${apiBase}/v1/newspapers/${id}/share`, {
+        method: "POST",
+        headers: authHeaders(true),
+        body: JSON.stringify({ public: !!makePublic }),
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.detail || `Share failed (${res.status})`);
+      }
+      const j = await res.json();
+      setNewspaper(j);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   if (!id) return <div style={{ padding: 20 }}>Invalid newspaper id.</div>;
 
   return (
@@ -221,6 +240,55 @@ export default function NewspaperDetail({
                     onDeletePermanent={deleteArticlePermanently}
                   />
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section style={{ marginTop: 24 }}>
+            <h3>Share</h3>
+            {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
+              <div>
+                <div style={{ marginBottom: 8 }}>
+                  {newspaper.is_public ? (
+                    <span style={{ color: "#065f46" }}>This newspaper is public.</span>
+                  ) : (
+                    <span style={{ color: "#854d0e" }}>This newspaper is private.</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    onClick={() => toggleShare(!newspaper.is_public)}
+                    style={{ padding: "8px 12px", borderRadius: 6 }}
+                  >
+                    {newspaper.is_public ? "Unshare" : "Make public"}
+                  </button>
+                  {newspaper.is_public && newspaper.public_token && (
+                    <>
+                      <a
+                        href={`/public/newspapers/${newspaper.public_token}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#2563eb" }}
+                      >
+                        View public page
+                      </a>
+                      <button
+                        onClick={() =>
+                          navigator.clipboard?.writeText(
+                            `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
+                          )
+                        }
+                        style={{ padding: "6px 8px", borderRadius: 6 }}
+                      >
+                        Copy public URL
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: "#666" }}>
+                Only the owner can change sharing settings.
               </div>
             )}
           </section>
