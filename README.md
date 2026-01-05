@@ -20,6 +20,8 @@ See full Docker guides below for details.
 - Docker guide (FR): [Doc/Guide_Docker_FR.md](Doc/Guide_Docker_FR.md)
 - Docker guide (EN): [Doc/Guide_Docker_EN.md](Doc/Guide_Docker_EN.md)
 - CI/CD overview: [Doc/CI_CD.md](Doc/CI_CD.md)
+- Database schema: [Doc/Database_Schema.md](Doc/Database_Schema.md)
+- Security review (auth/tokens/CORS/secrets): [Doc/Security_Review.md](Doc/Security_Review.md)
 
 ## Repository Layout
 - Backend (FastAPI): `backend/`
