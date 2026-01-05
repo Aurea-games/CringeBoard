@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 
 export default function PopularArticles({
-  apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+  apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
 }) {
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState([]);
@@ -171,11 +171,22 @@ function Header({ onSearch }) {
               Home
             </button>
 
-            <button onClick={() => (window.location.href = "/popular")} style={styles.createButton}>
+            <button
+              onClick={() => (window.location.href = "/popular")}
+              style={styles.createButton}
+            >
               Popular Articles
             </button>
 
-            <button onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); localStorage.removeItem("user_email"); window.location.href = "/"; }} style={styles.logoutButton}>
+            <button
+              onClick={() => {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                localStorage.removeItem("user_email");
+                window.location.href = "/";
+              }}
+              style={styles.logoutButton}
+            >
               Logout
             </button>
           </>

@@ -273,7 +273,11 @@ export default function NewspaperDetail({
                         View public page
                       </a>
                       <button
-                        onClick={() => navigator.clipboard?.writeText(`${window.location.origin}/public/newspapers/${newspaper.public_token}`)}
+                        onClick={() =>
+                          navigator.clipboard?.writeText(
+                            `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
+                          )
+                        }
                         style={{ padding: "6px 8px", borderRadius: 6 }}
                       >
                         Copy public URL
@@ -283,7 +287,9 @@ export default function NewspaperDetail({
                 </div>
               </div>
             ) : (
-              <div style={{ color: "#666" }}>Only the owner can change sharing settings.</div>
+              <div style={{ color: "#666" }}>
+                Only the owner can change sharing settings.
+              </div>
             )}
           </section>
 

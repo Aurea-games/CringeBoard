@@ -419,7 +419,8 @@ export default function App() {
   if (pathname === "/register") return <Register apiBase={apiBase} />;
   if (pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
   if (pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
-  if (/^\/newspapers\/\d+$/.test(pathname)) return <NewspaperDetail apiBase={apiBase} />;
+  if (/^\/newspapers\/\d+$/.test(pathname))
+    return <NewspaperDetail apiBase={apiBase} />;
   // FIX: Change the route path to "/favorites" (plural) to match the header and API
   if (pathname === "/favorites") {
     return (
@@ -434,7 +435,10 @@ export default function App() {
     return <PublicNewspapers apiBase={apiBase} />;
   }
 
-  const publicMatch = typeof window !== "undefined" ? window.location.pathname.match(/^\/public\/newspapers\/(.+)$/) : null;
+  const publicMatch =
+    typeof window !== "undefined"
+      ? window.location.pathname.match(/^\/public\/newspapers\/(.+)$/)
+      : null;
   if (publicMatch) return <PublicNewspaper apiBase={apiBase} />;
 
   return (
@@ -445,7 +449,8 @@ export default function App() {
         color: "var(--text)",
       }}
     >
-      <Header onSearch={(q) => {
+      <Header
+        onSearch={(q) => {
           setQuery(q);
           setShowPopular(false);
         }}
@@ -461,8 +466,8 @@ export default function App() {
             <>
               {error && (
                 <div style={{ marginBottom: 12, color: "#ef4444" }}>
-                  <strong>Warning:</strong> Failed to fetch articles: {error}.
-                  Showing sample data.
+                  <strong>Warning:</strong> Failed to fetch articles: {error}. Showing
+                  sample data.
                 </div>
               )}
 
