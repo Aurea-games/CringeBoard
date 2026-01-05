@@ -84,15 +84,6 @@ def favorite_article(
 ) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.favorite_article(article_id, current_email)
 
-@router.delete(
-    "/{article_id}/favorite",
-    response_model=schemas.Article,
-)
-def unfavorite_article(
-    article_id: int,
-    current_email: CurrentUserEmail,
-) -> schemas.Article:
-    return aggregator_dependencies.aggregator_service.unfavorite_article(article_id, current_email)
 
 @router.delete(
     "/{article_id}/favorite",
