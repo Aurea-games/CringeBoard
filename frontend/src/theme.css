@@ -1,0 +1,25 @@
+:root {
+  --bg: #ffffff;
+  --text: #111111;
+  --card-bg: #ffffff;
+  --border: #e5e7eb;
+  --muted: #555555;
+  --muted-strong: #333333;
+}
+
+body.dark {
+  --bg: #18181b;
+  --text: #e4e4e7;
+  --card-bg: #27272a;
+  --border: #3f3f46;
+  --muted: #a1a1aa;
+  --muted-strong: #e4e4e7;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+}

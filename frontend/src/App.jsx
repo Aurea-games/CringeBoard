@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
 import Login from "./Login.jsx";
@@ -6,10 +6,11 @@ import Register from "./Register.jsx";
 import CreateNewspaper from "./CreateNewspaper.jsx";
 import NewspaperList from "./NewspaperList.jsx";
 import NewspaperDetail from "./NewspaperDetail.jsx";
+import FavoriteArticle from "./FavoriteArticle.jsx";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-function Header({ onSearch }) {
+function Header({ onSearch, onPopularToggle, showPopular }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [email, setEmail] = useState(null);
 
@@ -19,18 +20,27 @@ function Header({ onSearch }) {
       const e = localStorage.getItem("user_email");
       setLoggedIn(!!token);
       setEmail(e || null);
-    } catch {
+    } catch (err) {
+      console.error("Failed to read auth tokens", err);
       setLoggedIn(false);
     }
+
+    const saved = localStorage.getItem("theme");
+    if (saved === "dark") document.body.classList.add("dark");
   }, []);
+
+  function toggleTheme() {
+    const isDark = document.body.classList.toggle("dark");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }
 
   function handleLogout() {
     try {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user_email");
-    } catch (e) {
-      console.error("Failed to logout:", e);
+    } catch (err) {
+      console.error("Failed to clear auth tokens", err);
     }
     window.location.href = "/";
   }
@@ -51,9 +61,14 @@ function Header({ onSearch }) {
     window.location.href = "/newspapers";
   }
 
+  function goFavorites() {
+    window.location.href = "/favorites";
+  }
+
   return (
     <header style={styles.header}>
       <h1 style={{ margin: 0 }}>CringeBoard</h1>
+
       <div style={styles.headerRight}>
         <input
           placeholder="Search articles..."
@@ -61,17 +76,40 @@ function Header({ onSearch }) {
           onChange={(e) => onSearch(e.target.value)}
           style={styles.searchInput}
         />
+
+        <button
+          onClick={onPopularToggle}
+          style={{
+            ...styles.registerButton,
+            background: showPopular ? "#2563eb" : "var(--card-bg)",
+            color: showPopular ? "white" : "var(--text)",
+          }}
+        >
+          Popular
+        </button>
+
+        <button onClick={toggleTheme} style={styles.registerButton}>
+          Toggle theme
+        </button>
+
         {loggedIn ? (
           <>
-            <div style={{ fontSize: 13, color: "#333" }}>
+            <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
               {email ? `Hi, ${email}` : "Logged in"}
             </div>
+
             <button onClick={goCreateNewspaper} style={styles.createButton}>
               New newspaper
             </button>
+
             <button onClick={goNewspapers} style={styles.createButton}>
               My newspapers
             </button>
+
+            <button onClick={goFavorites} style={styles.createButton}>
+              Favorites
+            </button>
+
             <button onClick={handleLogout} style={styles.logoutButton}>
               Logout
             </button>
@@ -91,8 +129,14 @@ function Header({ onSearch }) {
   );
 }
 
-function ArticleCard({ article }) {
+export function ArticleCard({ article, isFavorited = false, onFavoriteToggle }) {
   const [flipped, setFlipped] = useState(false);
+
+  const [favorited, setFavorited] = useState(isFavorited);
+
+  useEffect(() => {
+    setFavorited(isFavorited);
+  }, [isFavorited]);
 
   function toggleFlip() {
     setFlipped((v) => !v);
@@ -102,6 +146,45 @@ function ArticleCard({ article }) {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       toggleFlip();
+    }
+  }
+
+  async function handleFavorite(e) {
+    e.stopPropagation();
+    const token = localStorage.getItem("access_token");
+    if (!token) return alert("Login to favorite articles");
+
+    const previousState = favorited;
+    const nextState = !previousState;
+    setFavorited(nextState);
+
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      let response;
+
+      if (nextState) {
+        headers["Content-Type"] = "application/json";
+        response = await fetch(`${apiBase}/v1/me/favorites`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ article_id: article.id }),
+        });
+      } else {
+        response = await fetch(`${apiBase}/v1/me/favorites/${article.id}`, {
+          method: "DELETE",
+          headers,
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${nextState ? "favorite" : "unfavorite"} article`);
+      }
+
+      if (onFavoriteToggle) onFavoriteToggle(article.id, nextState);
+    } catch (err) {
+      console.error(err);
+      setFavorited(previousState);
+      alert("Could not update favorite status");
     }
   }
 
@@ -118,6 +201,7 @@ function ArticleCard({ article }) {
     visibility: flipped ? "hidden" : "visible",
     transition: "opacity 0.25s ease",
   };
+
   const backStyle = {
     ...styles.card,
     ...styles.back,
@@ -131,6 +215,7 @@ function ArticleCard({ article }) {
     opacity: flipped ? 1 : 0,
     visibility: flipped ? "visible" : "hidden",
     transition: "opacity 0.25s ease",
+    color: "var(--text)",
   };
 
   return (
@@ -150,20 +235,37 @@ function ArticleCard({ article }) {
         }}
       >
         <article style={frontStyle}>
-          <h3 style={{ margin: 0, textAlign: "left" }}>{article.title}</h3>
+          <h3 style={{ margin: 0, textAlign: "left", color: "var(--text)" }}>
+            {article.title}
+          </h3>
+          <div
+            onClick={handleFavorite}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              fontSize: 20,
+              color: favorited ? "#facc15" : "#aaa",
+              cursor: "pointer",
+            }}
+            title={favorited ? "Favorited" : "Add to favorites"}
+          >
+            ★
+          </div>
         </article>
 
         <article style={backStyle}>
-          <p style={{ margin: 0, color: "#444" }}>
+          <p style={{ margin: 0, color: "var(--muted)" }}>
             {previewText(article.content, 160, "No description")}
           </p>
+
           <div style={{ marginTop: 10 }}>
             {article.url && (
               <a
                 href={article.url}
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: "#2563eb" }}
+                style={{ color: "#3b82f6" }}
                 onClick={(e) => e.stopPropagation()}
               >
                 Read original
@@ -177,25 +279,90 @@ function ArticleCard({ article }) {
 }
 
 ArticleCard.propTypes = {
-  article: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    title: PropTypes.string,
-    content: PropTypes.string,
-    url: PropTypes.string,
-    owner_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  }).isRequired,
+  article: PropTypes.object.isRequired,
+  isFavorited: PropTypes.bool,
+  onFavoriteToggle: PropTypes.func,
 };
 
 export default function App() {
-  // read pathname early (not a hook) so hooks come next in consistent order
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPopular, setShowPopular] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
 
-  // Fetch articles from server with optional server-side search (debounced)
+  const syncFavoritesFromList = useCallback((items = []) => {
+    const safeItems = Array.isArray(items) ? items : [];
+    const ids = safeItems
+      .map((item) => item && item.id)
+      .filter((id) => id !== undefined && id !== null);
+    setFavoriteIds(new Set(ids));
+  }, []);
+
+  const handleFavoriteStateChange = useCallback((articleId, shouldBeFavorite) => {
+    if (articleId === undefined || articleId === null) return;
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (shouldBeFavorite) {
+        next.add(articleId);
+      } else {
+        next.delete(articleId);
+      }
+      return next;
+    });
+  }, []);
+
+  const refreshFavoriteIds = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      const response = await fetch(`${apiBase}/v1/me/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to load favorites");
+      }
+
+      const data = await response.json();
+      syncFavoritesFromList(data);
+    } catch (err) {
+      console.error("Failed to refresh favorites", err);
+    }
+  }, [syncFavoritesFromList]);
+
   useEffect(() => {
+    refreshFavoriteIds();
+  }, [refreshFavoriteIds]);
+
+  async function loadPopular() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/v1/articles/popular`);
+      if (!res.ok) throw new Error("Failed to load popular articles");
+      const j = await res.json();
+      setArticles(j || []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (showPopular) return;
     let mounted = true;
     const controller = new AbortController();
     let timer = null;
@@ -203,59 +370,28 @@ export default function App() {
     async function load(q) {
       setLoading(true);
       setError(null);
+
       try {
-        const token = (() => {
-          try {
-            return localStorage.getItem("access_token");
-          } catch (e) {
-            console.error("Failed to access localStorage:", e);
-            return null;
-          }
-        })();
+        const token = localStorage.getItem("access_token");
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const url = `${apiBase}/v1/articles/${q ? `?q=${encodeURIComponent(q)}` : ""}`;
         const res = await fetch(url, { headers, signal: controller.signal });
-        if (!res.ok) {
-          // if backend doesn't provide the v1/articles endpoint, try older paths (preserve query)
-          if (res.status === 404) {
-            const qparam = q ? `?q=${encodeURIComponent(q)}` : "";
-            const alt = await fetch(`${apiBase}/articles${qparam}`, {
-              signal: controller.signal,
-            });
-            if (alt.ok) {
-              const j = await alt.json();
-              if (mounted) setArticles(j || []);
-            } else {
-              const alt2 = await fetch(`${apiBase}/api/articles${qparam}`, {
-                signal: controller.signal,
-              });
-              if (alt2.ok) {
-                const j = await alt2.json();
-                if (mounted) setArticles(j || []);
-              } else {
-                throw new Error(`articles endpoints not found (404)`);
-              }
-            }
-          } else {
-            throw new Error(`Network response was not ok: ${res.status}`);
-          }
-        } else {
-          const j = await res.json();
-          if (mounted) setArticles(j || []);
-        }
+
+        if (!res.ok) throw new Error("Network error");
+
+        const j = await res.json();
+        if (mounted) setArticles(j || []);
       } catch (e) {
         if (mounted) {
-          // fallback: provide mock data so the UI can be built/tested without a backend
           setError(e.message);
-          setArticles(mockArticles);
+          setArticles([]);
         }
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    // debounce to avoid hammering server while the user types
     timer = setTimeout(() => load(query), 300);
 
     return () => {
@@ -263,27 +399,45 @@ export default function App() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
+  }, [query, showPopular]);
 
-  // server-side search is used; displayed articles come directly from the server
-  const filtered = articles;
+  useEffect(() => {
+    if (showPopular) loadPopular();
+  }, [showPopular]);
 
-  // route dispatching (hooks already declared above)
   if (pathname === "/login") return <Login apiBase={apiBase} />;
   if (pathname === "/register") return <Register apiBase={apiBase} />;
   if (pathname === "/newspapers/create") return <CreateNewspaper apiBase={apiBase} />;
   if (pathname === "/newspapers") return <NewspaperList apiBase={apiBase} />;
   if (/^\/newspapers\/\d+$/.test(pathname))
     return <NewspaperDetail apiBase={apiBase} />;
+  // FIX: Change the route path to "/favorites" (plural) to match the header and API
+  if (pathname === "/favorites") {
+    return (
+      <FavoriteArticle
+        apiBase={apiBase}
+        onFavoritesLoaded={syncFavoritesFromList}
+        onFavoriteChange={handleFavoriteStateChange}
+      />
+    );
+  }
 
   return (
     <div
       style={{
-        fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        fontFamily: "Inter, system-ui, sans-serif",
         padding: 20,
+        color: "var(--text)",
       }}
     >
-      <Header onSearch={setQuery} />
+      <Header
+        onSearch={(q) => {
+          setQuery(q);
+          setShowPopular(false);
+        }}
+        onPopularToggle={() => setShowPopular((v) => !v)}
+        showPopular={showPopular}
+      />
 
       <main>
         <section style={{ margin: "20px 0" }}>
@@ -292,20 +446,25 @@ export default function App() {
           ) : (
             <>
               {error && (
-                <div style={{ marginBottom: 12, color: "#b02a37" }}>
-                  <strong>Warning:</strong> Failed to fetch articles from API: {error}.
-                  Showing sample data.
+                <div style={{ marginBottom: 12, color: "#ef4444" }}>
+                  <strong>Warning:</strong> Failed to fetch articles: {error}. Showing
+                  sample data.
                 </div>
               )}
 
               <div style={styles.grid}>
-                {filtered.length === 0 ? (
-                  <div style={{ gridColumn: "1/-1", color: "#666" }}>
+                {articles.length === 0 ? (
+                  <div style={{ gridColumn: "1/-1", color: "var(--muted)" }}>
                     No articles found.
                   </div>
                 ) : (
-                  filtered.map((article) => (
-                    <ArticleCard key={article.id || article.title} article={article} />
+                  articles.map((article) => (
+                    <ArticleCard
+                      key={article.id || article.title}
+                      article={article}
+                      isFavorited={article.id != null && favoriteIds.has(article.id)}
+                      onFavoriteToggle={handleFavoriteStateChange}
+                    />
                   ))
                 )}
               </div>
@@ -314,7 +473,7 @@ export default function App() {
         </section>
       </main>
 
-      <footer style={{ marginTop: 36, color: "#666" }}>
+      <footer style={{ marginTop: 36, color: "var(--muted)" }}>
         <small>API base: {apiBase}</small>
       </footer>
     </div>
@@ -323,6 +482,8 @@ export default function App() {
 
 Header.propTypes = {
   onSearch: PropTypes.func,
+  onPopularToggle: PropTypes.func,
+  showPopular: PropTypes.bool,
 };
 
 const styles = {
@@ -340,8 +501,10 @@ const styles = {
   searchInput: {
     padding: "8px 10px",
     borderRadius: 6,
-    border: "1px solid #ddd",
+    border: "1px solid var(--border)",
     minWidth: 220,
+    background: "var(--card-bg)",
+    color: "var(--text)",
   },
   loginButton: {
     padding: "8px 12px",
@@ -362,15 +525,15 @@ const styles = {
   registerButton: {
     padding: "8px 12px",
     borderRadius: 6,
-    border: "1px solid #e5e7eb",
-    background: "#f8fafc",
-    color: "#111827",
+    border: "1px solid var(--border)",
+    background: "var(--card-bg)",
+    color: "var(--text)",
     cursor: "pointer",
   },
   createButton: {
     padding: "8px 12px",
     borderRadius: 6,
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     background: "#06b6d4",
     color: "white",
     cursor: "pointer",
@@ -378,10 +541,7 @@ const styles = {
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    // row gap then column gap: give extra horizontal space between cards
     gap: "24px 40px",
-    columnGap: 40,
-    rowGap: 24,
   },
   flipContainer: {
     perspective: "1000px",
@@ -409,70 +569,18 @@ const styles = {
     width: "100%",
     height: "100%",
   },
-  overlayRoot: {
-    position: "fixed",
-    inset: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  },
-  overlayBackdrop: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.45)",
-  },
-  overlayContent: {
-    position: "relative",
-    zIndex: 1001,
-    maxWidth: "96vw",
-    width: "min(1100px, 96vw)",
-    maxHeight: "90vh",
-    padding: 12,
-  },
   card: {
     padding: 16,
     borderRadius: 8,
-    boxShadow: "0 1px 3px rgba(16,24,40,0.05)",
-    border: "1px solid #eee",
-    background: "white",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    border: "1px solid var(--border)",
+    background: "var(--card-bg)",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     minHeight: 110,
     cursor: "pointer",
     width: "100%",
-  },
-  cardFooter: {
-    marginTop: 12,
-    display: "flex",
-    justifyContent: "space-between",
-    color: "#888",
-    fontSize: 12,
+    color: "var(--text)",
   },
 };
-
-const mockArticles = [
-  {
-    id: "1",
-    title: "Welcome to CringeBoard",
-    summary: "A playful first article to demonstrate the front page layout.",
-    author: "Team",
-    published_at: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "How to post your first cringe",
-    content:
-      "This guide helps you create your first cringe content and share it with the world.",
-    author: "Moderator",
-    published_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-  {
-    id: "3",
-    title: "Community guidelines",
-    summary: "Be kind, stay safe, and embrace the cringe.",
-    author: "CringeBoard",
-    published_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-  },
-];
