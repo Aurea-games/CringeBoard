@@ -193,7 +193,15 @@ function Header() {
               Favorites
             </button>
 
-            <button onClick={() => { localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); localStorage.removeItem("user_email"); window.location.href = "/"; }} style={styles.logoutButton}>
+            <button
+              onClick={() => {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("refresh_token");
+                localStorage.removeItem("user_email");
+                window.location.href = "/";
+              }}
+              style={styles.logoutButton}
+            >
               Logout
             </button>
           </>
