@@ -31,7 +31,7 @@ function extractHostname(url) {
   try {
     const { hostname } = new URL(url);
     return hostname.replace(/^www\./, "").toLowerCase();
-  } catch (err) {
+  } catch {
     const match = String(url).match(/^[a-z]+:\/\/(?:www\.)?([^/]+)/i);
     return match ? match[1].toLowerCase() : "";
   }
@@ -751,7 +751,7 @@ export default function App() {
     }
   }
 
-  async function loadPopular() {
+  const loadPopular = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -764,7 +764,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [prioritizeArticles]);
 
   useEffect(() => {
     if (showPopular) return;
@@ -808,7 +808,7 @@ export default function App() {
 
   useEffect(() => {
     if (showPopular) loadPopular();
-  }, [showPopular]);
+  }, [showPopular, loadPopular]);
 
   const unreadCount = notifications.filter((n) => n && !n.is_read).length;
 
