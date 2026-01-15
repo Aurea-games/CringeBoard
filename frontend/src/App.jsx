@@ -219,6 +219,7 @@ export function ArticleCard({ article, isFavorited = false, onFavoriteToggle }) 
   const [relatedError, setRelatedError] = useState(null);
   const [showRelated, setShowRelated] = useState(false);
 
+  // Fetch articles from server with optional server-side search (debounced)
   useEffect(() => {
     setFavorited(isFavorited);
   }, [isFavorited]);
