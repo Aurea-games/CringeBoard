@@ -1,111 +1,125 @@
 name: cringeboard
 
 services:
-    db:
-        image: postgres:alpine
-        restart: unless-stopped
-        environment:
-            POSTGRES_DB: ${POSTGRES_DB:-cringeboard}
-            POSTGRES_USER: ${POSTGRES_USER:-cringe}
-            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cringe}
-        ports:
-            - "${POSTGRES_PORT:-5432}:5432"
-        volumes:
-            - pgdata:/var/lib/postgresql/data
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cringe} -d ${POSTGRES_DB:-cringeboard}"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+  db:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cringeboard}
+      POSTGRES_USER: ${POSTGRES_USER:-cringe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cringe}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-cringe} -d ${POSTGRES_DB:-cringeboard}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    redis:
-        image: redis:alpine
-        restart: unless-stopped
-        ports:
-            - "${REDIS_PORT:-6379}:6379"
-        volumes:
-            - redisdata:/data
-        healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-    api:
-        build:
-            context: ./backend
-            dockerfile: Dockerfile
-        restart: unless-stopped
-        depends_on:
-            db:
-                condition: service_healthy
-            redis:
-                condition: service_started
-        environment:
-            DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cringe}:${POSTGRES_PASSWORD:-cringe}@db:5432/${POSTGRES_DB:-cringeboard}
-            REDIS_URL: redis://redis:6379/0
-            SECRET_KEY: ${SECRET_KEY:-change-me}
-            ENV: ${ENV:-development}
-            CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-            FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
-            FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
-            RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
-        ports:
-            - "${API_PORT:-8000}:8000"
-        command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cringe}:${POSTGRES_PASSWORD:-cringe}@db:5432/${POSTGRES_DB:-cringeboard}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      ENV: ${ENV:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
+      FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
+      RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      NEWSAPI_QUERY: ${NEWSAPI_QUERY:-}
+      NEWSAPI_COUNTRY: ${NEWSAPI_COUNTRY:-us}
+      NEWSAPI_CATEGORY: ${NEWSAPI_CATEGORY:-technology}
+      NEWSAPI_PAGE_SIZE: ${NEWSAPI_PAGE_SIZE:-20}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-    web:
-        build:
-            context: ./frontend
-            dockerfile: Dockerfile
-        restart: unless-stopped
-        depends_on:
-            api:
-                condition: service_started
-        environment:
-            VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
-            REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://api:8000}
-            NODE_ENV: ${NODE_ENV:-development}
-        ports:
-            - "${WEB_PORT:-3000}:3000"
-        command: sh -c "npm install && npm run build && npm run preview -- --host 0.0.0.0 --port 3000"
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
+      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://api:8000}
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    command: sh -c "npm install && npm run build && npm run preview -- --host 0.0.0.0 --port 3000"
 
-    scheduler:
-        build:
-            context: ./backend
-            dockerfile: Dockerfile
-        restart: unless-stopped
-        depends_on:
-            db:
-                condition: service_healthy
-            redis:
-                condition: service_started
-            api:
-                condition: service_started
-        environment:
-            DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cringe}:${POSTGRES_PASSWORD:-cringe}@db:5432/${POSTGRES_DB:-cringeboard}
-            REDIS_URL: redis://redis:6379/0
-            FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
-            FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
-            RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
-        command: python -m app.scheduler
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-cringe}:${POSTGRES_PASSWORD:-cringe}@db:5432/${POSTGRES_DB:-cringeboard}
+      REDIS_URL: redis://redis:6379/0
+      FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
+      FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
+      RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      NEWSAPI_QUERY: ${NEWSAPI_QUERY:-}
+      NEWSAPI_COUNTRY: ${NEWSAPI_COUNTRY:-us}
+      NEWSAPI_CATEGORY: ${NEWSAPI_CATEGORY:-technology}
+      NEWSAPI_PAGE_SIZE: ${NEWSAPI_PAGE_SIZE:-20}
+    command: python -m app.scheduler
 
-    pgadmin:
-        image: dpage/pgadmin4:latest
-        restart: unless-stopped
-        environment:
-            PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
-            PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-        ports:
-            - "${PGADMIN_PORT:-5050}:80"
-        depends_on:
-            db:
-                condition: service_healthy
-        volumes:
-            - pgadmindata:/var/lib/pgadmin
-            - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmindata:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
 
 volumes:
-    pgdata:
-    redisdata:
-    pgadmindata:
+  pgdata:
+  redisdata:
+  pgadmindata:

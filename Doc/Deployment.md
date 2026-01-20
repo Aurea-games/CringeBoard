@@ -12,6 +12,7 @@
 - API CORS: `CORS_ORIGINS`
 - Frontend API base: `VITE_API_BASE_URL` (URL reachable by the browser)
 - Scheduler feeds: `FLIPBOARD_MAGAZINES`, `FLIPBOARD_ACCOUNTS`, `RSS_FEEDS`
+- NewsAPI ingestion (optional): set `NEWSAPI_KEY` (required by NewsAPI) and optionally `NEWSAPI_QUERY` / `NEWSAPI_COUNTRY` / `NEWSAPI_CATEGORY` / `NEWSAPI_PAGE_SIZE`. If the key is empty, only RSS/Flipboard feeds are pulled.
 - Volumes: `pgdata` (Postgres), `redisdata` (Redis), `pgadmindata` (pgAdmin). Removing them erases data.
 
 ## Development (Docker)
