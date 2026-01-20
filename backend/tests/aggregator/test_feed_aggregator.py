@@ -4,12 +4,14 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "postgresql://user:pass@localhost/test-db")
 
-import psycopg
 from collections.abc import Iterable
+
+import psycopg
+import pytest
 
 
 class DummyCursor:
-    def __enter__(self) -> "DummyCursor":
+    def __enter__(self) -> DummyCursor:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -26,7 +28,7 @@ class DummyCursor:
 
 
 class DummyConnection:
-    def __enter__(self) -> "DummyConnection":
+    def __enter__(self) -> DummyConnection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
@@ -51,10 +53,8 @@ def fake_connect(*args, **kwargs) -> DummyConnection:
 
 psycopg.connect = fake_connect  # type: ignore[assignment]
 
-import pytest
-
-from app.aggregator.feed import FeedAggregator, ScrapedArticle
-from tests.conftest import InMemoryAggregatorRepository, InMemoryAuthRepository, SimplePasswordHasher
+from app.aggregator.feed import FeedAggregator, ScrapedArticle  # noqa: E402
+from tests.conftest import InMemoryAggregatorRepository, InMemoryAuthRepository, SimplePasswordHasher  # noqa: E402
 
 
 class DummyScraper:

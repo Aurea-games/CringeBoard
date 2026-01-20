@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import Any
 
@@ -7,6 +8,9 @@ from app.core.db import get_connection
 
 NewspaperRow = dict[str, Any]
 ArticleRow = dict[str, Any]
+SourceRow = dict[str, Any]
+NotificationRow = dict[str, Any]
+CustomFeedRow = dict[str, Any]
 
 
 class AggregatorRepository:
@@ -24,8 +28,11 @@ class AggregatorRepository:
             "title": row[1],
             "description": row[2],
             "owner_id": row[3],
-            "created_at": row[4],
-            "updated_at": row[5],
+            "is_public": row[4],
+            "public_token": row[5],
+            "created_at": row[6],
+            "updated_at": row[7],
+            "source_id": row[8],
         }
 
     @staticmethod
@@ -50,15 +57,134 @@ class AggregatorRepository:
             "newspaper_ids": cls.normalize_newspaper_ids(row[8]),
         }
 
-    def create_newspaper(self, owner_id: int, title: str, description: str | None) -> NewspaperRow:
+    @staticmethod
+    def row_to_source(row: tuple[Any, ...] | None) -> SourceRow | None:
+        if row is None:
+            return None
+        # row may include is_followed appended by queries
+        base_length = 7
+        is_followed = False
+        if len(row) > base_length:
+            is_followed = bool(row[7])
+        return {
+            "id": row[0],
+            "name": row[1],
+            "feed_url": row[2],
+            "description": row[3],
+            "status": row[4],
+            "created_at": row[5],
+            "updated_at": row[6],
+            "is_followed": is_followed,
+        }
+
+    @staticmethod
+    def row_to_notification(row: tuple[Any, ...] | None) -> NotificationRow | None:
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "user_id": row[1],
+            "source_id": row[2],
+            "article_id": row[3],
+            "newspaper_id": row[4],
+            "message": row[5],
+            "is_read": row[6],
+            "created_at": row[7],
+        }
+
+    @staticmethod
+    def _normalize_filter_rules(raw_rules: Any) -> dict[str, Any]:
+        if raw_rules is None:
+            return {}
+        if hasattr(raw_rules, "model_dump"):
+            try:
+                return raw_rules.model_dump()
+            except Exception:
+                # Fall back to default handling if model_dump fails
+                pass
+        if isinstance(raw_rules, str):
+            try:
+                parsed = json.loads(raw_rules)
+            except json.JSONDecodeError:
+                return {}
+            return parsed if isinstance(parsed, dict) else {}
+        if isinstance(raw_rules, dict):
+            return raw_rules
+        return {}
+
+    @classmethod
+    def row_to_custom_feed(cls, row: tuple[Any, ...] | None) -> CustomFeedRow | None:
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "owner_id": row[1],
+            "name": row[2],
+            "description": row[3],
+            "filter_rules": cls._normalize_filter_rules(row[4]),
+            "created_at": row[5],
+            "updated_at": row[6],
+        }
+
+    @staticmethod
+    def _normalize_id_list(raw_ids: Any) -> list[int]:
+        if raw_ids is None:
+            return []
+        if isinstance(raw_ids, list | tuple | set):
+            result: list[int] = []
+            for value in raw_ids:
+                try:
+                    result.append(int(value))
+                except (TypeError, ValueError):
+                    continue
+            return result
+        try:
+            return [int(raw_ids)]
+        except (TypeError, ValueError):
+            return []
+
+    @staticmethod
+    def _normalize_keywords(raw_keywords: Any) -> list[str]:
+        if raw_keywords is None:
+            return []
+        keywords = raw_keywords
+        if isinstance(raw_keywords, str):
+            keywords = [raw_keywords]
+        result: list[str] = []
+        if isinstance(keywords, list | tuple | set):
+            for keyword in keywords:
+                if not isinstance(keyword, str):
+                    continue
+                cleaned = keyword.strip()
+                if cleaned:
+                    result.append(cleaned)
+        return result
+
+    @staticmethod
+    def _normalize_min_popularity(raw_value: Any) -> int | None:
+        if raw_value is None:
+            return None
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            return None
+        return max(value, 0)
+
+    def create_newspaper(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        source_id: int | None = None,
+    ) -> NewspaperRow:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO newspapers (title, description, owner_id)
-                VALUES (%s, %s, %s)
-                RETURNING id, title, description, owner_id, created_at, updated_at
+                INSERT INTO newspapers (title, description, owner_id, source_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 """,
-                (title, description, owner_id),
+                (title, description, owner_id, source_id),
             )
             row = cur.fetchone()
         if row is None:
@@ -88,7 +214,7 @@ class AggregatorRepository:
                 params.extend([pattern, pattern])
 
         sql = [
-            "SELECT id, title, description, owner_id, created_at, updated_at",
+            "SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id",
             "FROM newspapers",
         ]
         if clauses:
@@ -110,7 +236,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 FROM newspapers
                 WHERE owner_id = %s AND title = %s
                 """,
@@ -123,7 +249,7 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, title, description, owner_id, created_at, updated_at
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 FROM newspapers
                 WHERE id = %s
                 """,
@@ -137,6 +263,8 @@ class AggregatorRepository:
         newspaper_id: int,
         title: str | None,
         description: str | None,
+        source_id: int | None,
+        update_source_id: bool = False,
     ) -> NewspaperRow | None:
         assignments: list[str] = []
         params: list[Any] = []
@@ -147,6 +275,9 @@ class AggregatorRepository:
         if description is not None:
             assignments.append("description = %s")
             params.append(description)
+        if update_source_id:
+            assignments.append("source_id = %s")
+            params.append(source_id)
 
         set_clause = ", ".join(assignments)
         if set_clause:
@@ -160,7 +291,7 @@ class AggregatorRepository:
                 UPDATE newspapers
                 SET {set_clause}updated_at = NOW()
                 WHERE id = %s
-                RETURNING id, title, description, owner_id, created_at, updated_at
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
                 """,
                 tuple(params),
             )
@@ -171,6 +302,40 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM newspapers WHERE id = %s", (newspaper_id,))
             return cur.rowcount > 0
+
+    def update_newspaper_publication(
+        self,
+        newspaper_id: int,
+        is_public: bool,
+        public_token: str | None,
+    ) -> NewspaperRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE newspapers
+                SET is_public = %s,
+                    public_token = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
+                """,
+                (is_public, public_token, newspaper_id),
+            )
+            row = cur.fetchone()
+        return self.row_to_newspaper(row)
+
+    def get_newspaper_by_token(self, token: str) -> NewspaperRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, description, owner_id, is_public, public_token, created_at, updated_at, source_id
+                FROM newspapers
+                WHERE public_token = %s AND is_public = TRUE
+                """,
+                (token,),
+            )
+            row = cur.fetchone()
+        return self.row_to_newspaper(row)
 
     def list_articles_for_newspaper(self, newspaper_id: int) -> list[ArticleRow]:
         return self.search_articles(newspaper_id=newspaper_id)
@@ -326,6 +491,70 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             return self.fetch_article(cur, article_id)
 
+    def get_related_articles(self, article_id: int, limit: int = 10) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH target_newspapers AS (
+                    SELECT na.newspaper_id
+                    FROM newspaper_articles AS na
+                    WHERE na.article_id = %s
+                ),
+                scored_related AS (
+                    SELECT
+                        a.id,
+                        a.title,
+                        a.content,
+                        a.url,
+                        a.owner_id,
+                        COALESCE(f.popularity, 0) AS popularity,
+                        a.created_at,
+                        a.updated_at,
+                        COUNT(DISTINCT na.newspaper_id) AS overlap_count
+                    FROM articles AS a
+                    JOIN newspaper_articles AS na ON na.article_id = a.id
+                    LEFT JOIN (
+                        SELECT article_id, COUNT(*) AS popularity
+                        FROM article_favorites
+                        GROUP BY article_id
+                    ) AS f ON f.article_id = a.id
+                    WHERE na.newspaper_id IN (SELECT newspaper_id FROM target_newspapers)
+                      AND a.id <> %s
+                    GROUP BY a.id, a.title, a.content, a.url, a.owner_id, a.created_at, a.updated_at, f.popularity
+                )
+                SELECT
+                    sr.id,
+                    sr.title,
+                    sr.content,
+                    sr.url,
+                    sr.owner_id,
+                    sr.popularity,
+                    sr.created_at,
+                    sr.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na2.newspaper_id
+                            FROM newspaper_articles AS na2
+                            WHERE na2.article_id = sr.id
+                            ORDER BY na2.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM scored_related AS sr
+                ORDER BY sr.overlap_count DESC, sr.popularity DESC, sr.created_at DESC
+                LIMIT %s
+                """,
+                (article_id, article_id, limit),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
+
     def add_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute(
@@ -337,6 +566,124 @@ class AggregatorRepository:
                 (user_id, article_id),
             )
             return self.fetch_article(cur, article_id)
+
+    def remove_article_favorite(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM article_favorites
+                WHERE user_id = %s AND article_id = %s
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def list_favorite_articles(self, user_id: int) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.content,
+                    a.url,
+                    a.owner_id,
+                    COALESCE(f.popularity, 0) AS popularity,
+                    a.created_at,
+                    a.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na.newspaper_id
+                            FROM newspaper_articles AS na
+                            WHERE na.article_id = a.id
+                            ORDER BY na.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM articles AS a
+                JOIN article_favorites AS af ON af.article_id = a.id AND af.user_id = %s
+                LEFT JOIN (
+                    SELECT article_id, COUNT(*) AS popularity
+                    FROM article_favorites
+                    GROUP BY article_id
+                ) AS f ON f.article_id = a.id
+                ORDER BY af.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
+
+    def add_read_later(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO article_read_later (user_id, article_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def remove_read_later(self, user_id: int, article_id: int) -> ArticleRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM article_read_later
+                WHERE user_id = %s AND article_id = %s
+                """,
+                (user_id, article_id),
+            )
+            return self.fetch_article(cur, article_id)
+
+    def list_read_later_articles(self, user_id: int) -> list[ArticleRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.content,
+                    a.url,
+                    a.owner_id,
+                    COALESCE(f.popularity, 0) AS popularity,
+                    a.created_at,
+                    a.updated_at,
+                    COALESCE(
+                        ARRAY(
+                            SELECT na.newspaper_id
+                            FROM newspaper_articles AS na
+                            WHERE na.article_id = a.id
+                            ORDER BY na.newspaper_id
+                        ),
+                        ARRAY[]::INTEGER[]
+                    ) AS newspaper_ids
+                FROM articles AS a
+                JOIN article_read_later AS arl ON arl.article_id = a.id AND arl.user_id = %s
+                LEFT JOIN (
+                    SELECT article_id, COUNT(*) AS popularity
+                    FROM article_favorites
+                    GROUP BY article_id
+                ) AS f ON f.article_id = a.id
+                ORDER BY arl.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result
 
     def find_article_by_url(self, url: str) -> ArticleRow | None:
         with self._connection_factory() as conn, conn.cursor() as cur:
@@ -444,3 +791,482 @@ class AggregatorRepository:
         with self._connection_factory() as conn, conn.cursor() as cur:
             cur.execute("DELETE FROM articles WHERE id = %s", (article_id,))
             return cur.rowcount > 0
+
+    # ---- Sources management ----
+    def create_source(
+        self,
+        name: str,
+        feed_url: str | None,
+        description: str | None,
+        status: str = "active",
+    ) -> SourceRow:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO sources (name, feed_url, description, status)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, name, feed_url, description, status, created_at, updated_at
+                """,
+                (name, feed_url, description, status),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("Failed to create source.")
+        source = self.row_to_source(row)
+        if source is None:
+            raise RuntimeError("Failed to map created source.")
+        return source
+
+    def list_sources(
+        self,
+        search: str | None = None,
+        status: str | None = None,
+        follower_id: int | None = None,
+    ) -> list[SourceRow]:
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if status:
+            clauses.append("s.status = %s")
+            params.append(status)
+
+        pattern: str | None = None
+        if search:
+            trimmed = search.strip()
+            if trimmed:
+                pattern = f"%{trimmed}%"
+                clauses.append("(s.name ILIKE %s OR s.description ILIKE %s)")
+                params.extend([pattern, pattern])
+
+        sql = [
+            """
+            SELECT
+                s.id,
+                s.name,
+                s.feed_url,
+                s.description,
+                s.status,
+                s.created_at,
+                s.updated_at
+            """,
+        ]
+        if follower_id is not None:
+            sql.append(
+                """
+                , CASE WHEN uf.user_id IS NULL THEN FALSE ELSE TRUE END AS is_followed
+                """
+            )
+        sql.append("FROM sources AS s")
+        if follower_id is not None:
+            sql.append(
+                """
+                LEFT JOIN user_followed_sources AS uf
+                    ON uf.source_id = s.id AND uf.user_id = %s
+                """
+            )
+            params.insert(0, follower_id)
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+        sql.append("ORDER BY s.created_at DESC")
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+
+        results: list[SourceRow] = []
+        for row in rows:
+            source = self.row_to_source(row)
+            if source is not None:
+                results.append(source)
+        return results
+
+    # ---- Notifications ----
+    def create_notifications_for_source_followers(
+        self,
+        source_id: int,
+        message: str,
+        article_id: int | None = None,
+        newspaper_id: int | None = None,
+    ) -> int:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO notifications (user_id, source_id, article_id, newspaper_id, message)
+                SELECT uf.user_id, %s, %s, %s, %s
+                FROM user_followed_sources AS uf
+                WHERE uf.source_id = %s
+                """,
+                (source_id, article_id, newspaper_id, message, source_id),
+            )
+            return cur.rowcount
+
+    def list_notifications(self, user_id: int, include_read: bool = False) -> list[NotificationRow]:
+        clauses = ["user_id = %s"]
+        params: list[Any] = [user_id]
+        if not include_read:
+            clauses.append("is_read = FALSE")
+        sql = [
+            """
+            SELECT id, user_id, source_id, article_id, newspaper_id, message, is_read, created_at
+            FROM notifications
+            WHERE """
+            + " AND ".join(clauses),
+            "ORDER BY created_at DESC",
+        ]
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+        result: list[NotificationRow] = []
+        for row in rows:
+            notification = self.row_to_notification(row)
+            if notification is not None:
+                result.append(notification)
+        return result
+
+    def mark_notification_read(self, user_id: int, notification_id: int) -> NotificationRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE notifications
+                SET is_read = TRUE
+                WHERE id = %s AND user_id = %s
+                RETURNING id, user_id, source_id, article_id, newspaper_id, message, is_read, created_at
+                """,
+                (notification_id, user_id),
+            )
+            row = cur.fetchone()
+        return self.row_to_notification(row)
+
+    def get_source(self, source_id: int, follower_id: int | None = None) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            if follower_id is None:
+                cur.execute(
+                    """
+                    SELECT id, name, feed_url, description, status, created_at, updated_at
+                    FROM sources
+                    WHERE id = %s
+                    """,
+                    (source_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        s.id,
+                        s.name,
+                        s.feed_url,
+                        s.description,
+                        s.status,
+                        s.created_at,
+                        s.updated_at,
+                        CASE WHEN uf.user_id IS NULL THEN FALSE ELSE TRUE END AS is_followed
+                    FROM sources AS s
+                    LEFT JOIN user_followed_sources AS uf
+                        ON uf.source_id = s.id AND uf.user_id = %s
+                    WHERE s.id = %s
+                    """,
+                    (follower_id, source_id),
+                )
+            row = cur.fetchone()
+        return self.row_to_source(row)
+
+    def update_source(
+        self,
+        source_id: int,
+        name: str | None,
+        feed_url: str | None,
+        description: str | None,
+        status: str | None,
+    ) -> SourceRow | None:
+        assignments: list[str] = []
+        params: list[Any] = []
+
+        if name is not None:
+            assignments.append("name = %s")
+            params.append(name)
+        if feed_url is not None:
+            assignments.append("feed_url = %s")
+            params.append(feed_url)
+        if description is not None:
+            assignments.append("description = %s")
+            params.append(description)
+        if status is not None:
+            assignments.append("status = %s")
+            params.append(status)
+
+        set_clause = ", ".join(assignments)
+        if set_clause:
+            set_clause = f"{set_clause}, "
+
+        params.append(source_id)
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE sources
+                SET {set_clause}updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, feed_url, description, status, created_at, updated_at
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+        return self.row_to_source(row)
+
+    def follow_source(self, user_id: int, source_id: int) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO user_followed_sources (user_id, source_id)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (user_id, source_id),
+            )
+            return self.get_source(source_id, follower_id=user_id)
+
+    def unfollow_source(self, user_id: int, source_id: int) -> SourceRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM user_followed_sources
+                WHERE user_id = %s AND source_id = %s
+                """,
+                (user_id, source_id),
+            )
+            return self.get_source(source_id, follower_id=user_id)
+
+    def list_followed_sources(self, user_id: int) -> list[SourceRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    s.id,
+                    s.name,
+                    s.feed_url,
+                    s.description,
+                    s.status,
+                    s.created_at,
+                    s.updated_at,
+                    TRUE AS is_followed
+                FROM user_followed_sources AS uf
+                JOIN sources AS s ON s.id = uf.source_id
+                WHERE uf.user_id = %s
+                ORDER BY uf.created_at DESC
+                """,
+                (user_id,),
+            )
+            rows = cur.fetchall()
+
+        results: list[SourceRow] = []
+        for row in rows:
+            source = self.row_to_source(row)
+            if source is not None:
+                results.append(source)
+        return results
+
+    # ---- Custom feeds ----
+    def create_custom_feed(
+        self,
+        owner_id: int,
+        name: str,
+        description: str | None,
+        filter_rules: dict[str, Any],
+    ) -> CustomFeedRow:
+        rules = self._normalize_filter_rules(filter_rules)
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO custom_feeds (owner_id, name, description, filter_rules)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id, owner_id, name, description, filter_rules, created_at, updated_at
+                """,
+                (owner_id, name, description, json.dumps(rules)),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise RuntimeError("Failed to create custom feed.")
+        feed = self.row_to_custom_feed(row)
+        if feed is None:
+            raise RuntimeError("Failed to map created custom feed.")
+        return feed
+
+    def list_custom_feeds(self, owner_id: int) -> list[CustomFeedRow]:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, owner_id, name, description, filter_rules, created_at, updated_at
+                FROM custom_feeds
+                WHERE owner_id = %s
+                ORDER BY created_at DESC
+                """,
+                (owner_id,),
+            )
+            rows = cur.fetchall()
+
+        result: list[CustomFeedRow] = []
+        for row in rows:
+            feed = self.row_to_custom_feed(row)
+            if feed is not None:
+                result.append(feed)
+        return result
+
+    def get_custom_feed(self, custom_feed_id: int) -> CustomFeedRow | None:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, owner_id, name, description, filter_rules, created_at, updated_at
+                FROM custom_feeds
+                WHERE id = %s
+                """,
+                (custom_feed_id,),
+            )
+            row = cur.fetchone()
+        return self.row_to_custom_feed(row)
+
+    def update_custom_feed(
+        self,
+        custom_feed_id: int,
+        name: str | None,
+        description: str | None,
+        filter_rules: dict[str, Any] | None,
+    ) -> CustomFeedRow | None:
+        assignments: list[str] = []
+        params: list[Any] = []
+
+        if name is not None:
+            assignments.append("name = %s")
+            params.append(name)
+        if description is not None:
+            assignments.append("description = %s")
+            params.append(description)
+        if filter_rules is not None:
+            assignments.append("filter_rules = %s")
+            params.append(json.dumps(self._normalize_filter_rules(filter_rules)))
+
+        set_clause = ", ".join(assignments)
+        if set_clause:
+            set_clause = f"{set_clause}, "
+
+        params.append(custom_feed_id)
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE custom_feeds
+                SET {set_clause}updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, owner_id, name, description, filter_rules, created_at, updated_at
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+        return self.row_to_custom_feed(row)
+
+    def delete_custom_feed(self, custom_feed_id: int) -> bool:
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM custom_feeds WHERE id = %s", (custom_feed_id,))
+            return cur.rowcount > 0
+
+    def get_articles_for_custom_feed(
+        self,
+        filter_rules: dict[str, Any] | None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ArticleRow]:
+        rules = self._normalize_filter_rules(filter_rules)
+        include_sources = self._normalize_id_list(rules.get("include_sources"))
+        exclude_sources = self._normalize_id_list(rules.get("exclude_sources"))
+        include_newspapers = self._normalize_id_list(rules.get("include_newspapers"))
+        include_keywords = self._normalize_keywords(rules.get("include_keywords"))
+        exclude_keywords = self._normalize_keywords(rules.get("exclude_keywords"))
+        min_popularity = self._normalize_min_popularity(rules.get("min_popularity"))
+
+        joins: list[str] = []
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        requires_newspaper_join = bool(include_sources or exclude_sources or include_newspapers)
+        if requires_newspaper_join:
+            joins.append("JOIN newspaper_articles AS na_filter ON na_filter.article_id = a.id")
+            joins.append("JOIN newspapers AS n_filter ON n_filter.id = na_filter.newspaper_id")
+
+        if include_sources:
+            placeholders = ", ".join(["%s"] * len(include_sources))
+            clauses.append(f"n_filter.source_id IN ({placeholders})")
+            params.extend(include_sources)
+
+        if exclude_sources:
+            placeholders = ", ".join(["%s"] * len(exclude_sources))
+            clauses.append(f"(n_filter.source_id IS NULL OR n_filter.source_id NOT IN ({placeholders}))")
+            params.extend(exclude_sources)
+
+        if include_newspapers:
+            placeholders = ", ".join(["%s"] * len(include_newspapers))
+            clauses.append(f"na_filter.newspaper_id IN ({placeholders})")
+            params.extend(include_newspapers)
+
+        if include_keywords:
+            keyword_clauses: list[str] = []
+            for keyword in include_keywords:
+                keyword_clauses.append("(a.title ILIKE %s OR a.content ILIKE %s)")
+                pattern = f"%{keyword}%"
+                params.extend([pattern, pattern])
+            clauses.append("(" + " OR ".join(keyword_clauses) + ")")
+
+        if exclude_keywords:
+            for keyword in exclude_keywords:
+                pattern = f"%{keyword}%"
+                clauses.append("(a.title NOT ILIKE %s AND a.content NOT ILIKE %s)")
+                params.extend([pattern, pattern])
+
+        if min_popularity is not None:
+            clauses.append("COALESCE(f.popularity, 0) >= %s")
+            params.append(min_popularity)
+
+        sql = [
+            "SELECT DISTINCT",
+            "    a.id,",
+            "    a.title,",
+            "    a.content,",
+            "    a.url,",
+            "    a.owner_id,",
+            "    COALESCE(f.popularity, 0) AS popularity,",
+            "    a.created_at,",
+            "    a.updated_at,",
+            "    COALESCE(",
+            "        ARRAY(",
+            "            SELECT na2.newspaper_id",
+            "            FROM newspaper_articles AS na2",
+            "            WHERE na2.article_id = a.id",
+            "            ORDER BY na2.newspaper_id",
+            "        ),",
+            "        ARRAY[]::INTEGER[]",
+            "    ) AS newspaper_ids",
+            "FROM articles AS a",
+            "LEFT JOIN (",
+            "    SELECT article_id, COUNT(*) AS popularity",
+            "    FROM article_favorites",
+            "    GROUP BY article_id",
+            ") AS f ON f.article_id = a.id",
+        ]
+
+        sql.extend(joins)
+
+        if clauses:
+            sql.append("WHERE " + " AND ".join(clauses))
+
+        sql.append("ORDER BY a.created_at DESC")
+        sql.append("LIMIT %s OFFSET %s")
+        params.extend([limit, offset])
+
+        with self._connection_factory() as conn, conn.cursor() as cur:
+            cur.execute("\n".join(sql), tuple(params))
+            rows = cur.fetchall()
+
+        result: list[ArticleRow] = []
+        for row in rows:
+            article = self.row_to_article(row)
+            if article is not None:
+                result.append(article)
+        return result

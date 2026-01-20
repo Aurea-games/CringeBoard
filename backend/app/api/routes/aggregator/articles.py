@@ -48,11 +48,32 @@ def list_popular_articles(
 
 
 @router.get(
+    "/favorite",
+    response_model=list[schemas.Article],
+)
+def list_my_favorites(
+    current_email: CurrentUserEmail,
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_user_favorites(current_email)
+
+
+@router.get(
     "/{article_id}",
     response_model=schemas.Article,
 )
 def get_article(article_id: int) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.get_article(article_id)
+
+
+@router.get(
+    "/{article_id}/related",
+    response_model=list[schemas.Article],
+)
+def list_related_articles(
+    article_id: int,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[schemas.Article]:
+    return aggregator_dependencies.aggregator_service.list_related_articles(article_id, limit=limit)
 
 
 @router.post(
@@ -64,6 +85,41 @@ def favorite_article(
     current_email: CurrentUserEmail,
 ) -> schemas.Article:
     return aggregator_dependencies.aggregator_service.favorite_article(article_id, current_email)
+
+
+@router.delete(
+    "/{article_id}/favorite",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def unfavorite_article(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> Response:
+    aggregator_dependencies.aggregator_service.unfavorite_article(article_id, current_email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{article_id}/read-later",
+    response_model=schemas.Article,
+)
+def mark_article_for_later(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> schemas.Article:
+    return aggregator_dependencies.aggregator_service.save_article_for_later(article_id, current_email)
+
+
+@router.delete(
+    "/{article_id}/read-later",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def unmark_article_for_later(
+    article_id: int,
+    current_email: CurrentUserEmail,
+) -> Response:
+    aggregator_dependencies.aggregator_service.remove_article_from_read_later(article_id, current_email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch(
