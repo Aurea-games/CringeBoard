@@ -10,7 +10,32 @@ import FavoriteArticle from "./FavoriteArticle.jsx";
 import PublicNewspaper from "./PublicNewspaper.jsx";
 import PublicNewspapers from "./PublicNewspapers.jsx";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+function resolveApiBase() {
+  const envBase =
+    import.meta.env.VITE_API_BASE_URL || import.meta.env.REACT_APP_API_BASE_URL;
+
+  // If env points to localhost but the user visits from another host/IP, swap the hostname.
+  if (envBase) {
+    try {
+      const url = new URL(envBase);
+      const isLocalEnv = ["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname);
+      const isBrowserLocal = ["localhost", "127.0.0.1", "0.0.0.0"].includes(
+        window.location.hostname,
+      );
+      if (isLocalEnv && !isBrowserLocal) {
+        url.hostname = window.location.hostname;
+        return url.toString().replace(/\/$/, "");
+      }
+      return envBase.replace(/\/$/, "");
+    } catch (e) {
+      console.warn("Invalid API base URL; falling back to window location", e);
+    }
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:8000`;
+}
+
+const apiBase = resolveApiBase();
 
 const suggestedThemes = [
   "AI",

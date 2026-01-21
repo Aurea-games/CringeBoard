@@ -8,4 +8,7 @@ export default defineConfig({
     host: true,
     port: 3000,
   },
+  preview: {
+    allowedHosts: ["patatoserv.ddns.net"],
+  },
 });
