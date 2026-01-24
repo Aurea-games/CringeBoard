@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 export default function CreateNewspaper({
   apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
@@ -25,6 +27,20 @@ export default function CreateNewspaper({
   const [aContent, setAContent] = useState("");
   const [aUrl, setAUrl] = useState("");
   const [creatingArticle, setCreatingArticle] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const e = localStorage.getItem("user_email");
+      setLoggedIn(!!token);
+      setUserEmail(e || null);
+    } catch {
+      setLoggedIn(false);
+    }
+  }, []);
 
   function authHeaders() {
     try {
@@ -171,30 +187,44 @@ export default function CreateNewspaper({
   }, [newspaper, loadAttached]);
 
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-      }}
-    >
-      <h2>Create a newspaper</h2>
-      {!newspaper ? (
-        <form
-          onSubmit={handleCreateNewspaper}
-          style={{ maxWidth: 720, marginBottom: 24 }}
-        >
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+          />
+
+          <div style={styles.pageContent}>
+            <header style={{ ...styles.headerMain, marginBottom: 20 }}>
+              <div style={styles.headerTopRow}>
+                <div>
+                  <h1 style={{ margin: 0 }}>CringeBoard</h1>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Create a newspaper
+                  </div>
+                </div>
+                {loggedIn && (
+                  <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+                    {userEmail ? `Hi, ${userEmail}` : "Logged in"}
+                  </div>
+                )}
+              </div>
+            </header>
+
+            {!newspaper ? (
+              <form
+                onSubmit={handleCreateNewspaper}
+                style={{ ...styles.formCard, maxWidth: 720, marginBottom: 24 }}
+              >
           <label style={{ display: "block", marginBottom: 12 }}>
             <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
             <input
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #ddd",
-              }}
+              style={{ ...styles.textInput, maxWidth: 520 }}
             />
           </label>
           <label style={{ display: "block", marginBottom: 12 }}>
@@ -203,46 +233,31 @@ export default function CreateNewspaper({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              style={{
-                width: "100%",
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #ddd",
-              }}
+              style={{ ...styles.textArea, maxWidth: 520 }}
             />
           </label>
-          {error && <div style={{ color: "#b02a37", marginBottom: 12 }}>{error}</div>}
+          {error && <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>}
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="submit"
               disabled={creating}
-              style={{
-                padding: "8px 12px",
-                background: "#06b6d4",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-              }}
+              style={styles.createButton}
             >
               {creating ? "Creating…" : "Create newspaper"}
             </button>
             <button
               type="button"
               onClick={() => (window.location.href = "/")}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid #e5e7eb",
-              }}
+              style={styles.registerButton}
             >
               Cancel
             </button>
           </div>
-        </form>
-      ) : (
-        <div style={{ maxWidth: 980 }}>
-          <h3 style={{ marginTop: 0 }}>{newspaper.title}</h3>
-          <p style={{ color: "#444" }}>{newspaper.description}</p>
+            </form>
+          ) : (
+            <div style={{ maxWidth: 980 }}>
+              <h3 style={{ marginTop: 0 }}>{newspaper.title}</h3>
+          <p style={styles.mutedText}>{newspaper.description}</p>
 
           <section style={{ marginTop: 18 }}>
             <h4>Attach existing articles</h4>
@@ -251,14 +266,9 @@ export default function CreateNewspaper({
                 placeholder="Search articles to attach"
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: 8,
-                  borderRadius: 6,
-                  border: "1px solid #ddd",
-                }}
+                style={{ ...styles.textInput, flex: 1 }}
               />
-              <div style={{ alignSelf: "center", color: "#666" }}>
+              <div style={{ alignSelf: "center", color: "var(--muted)" }}>
                 {searching ? "Searching…" : ""}
               </div>
             </div>
@@ -272,22 +282,16 @@ export default function CreateNewspaper({
               {searchResults.map((a) => (
                 <div
                   key={a.id}
-                  style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}
+                  style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
                 >
                   <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: "#555", marginTop: 6 }}>
+                  <div style={{ color: "var(--muted)", marginTop: 6 }}>
                     {previewText(a.content, 140, "No description")}
                   </div>
                   <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
                     <button
                       onClick={() => attachArticle(a.id)}
-                      style={{
-                        padding: "6px 8px",
-                        borderRadius: 6,
-                        background: "#2563eb",
-                        color: "white",
-                        border: "none",
-                      }}
+                      style={styles.loginButton}
                     >
                       Attach
                     </button>
@@ -295,7 +299,7 @@ export default function CreateNewspaper({
                       href={a.url || "#"}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: "#2563eb", alignSelf: "center" }}
+                      style={{ ...styles.link, alignSelf: "center" }}
                     >
                       View
                     </a>
@@ -314,12 +318,7 @@ export default function CreateNewspaper({
                   value={aTitle}
                   onChange={(e) => setATitle(e.target.value)}
                   required
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
+                  style={styles.textInput}
                 />
               </label>
               <label style={{ display: "block", marginBottom: 8 }}>
@@ -328,12 +327,7 @@ export default function CreateNewspaper({
                   value={aContent}
                   onChange={(e) => setAContent(e.target.value)}
                   rows={6}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
+                  style={styles.textArea}
                 />
               </label>
               <label style={{ display: "block", marginBottom: 8 }}>
@@ -343,28 +337,17 @@ export default function CreateNewspaper({
                 <input
                   value={aUrl}
                   onChange={(e) => setAUrl(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
+                  style={styles.textInput}
                 />
               </label>
               {error && (
-                <div style={{ color: "#b02a37", marginBottom: 12 }}>{error}</div>
+                <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
               )}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   type="submit"
                   disabled={creatingArticle}
-                  style={{
-                    padding: "8px 12px",
-                    background: "#16a34a",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 6,
-                  }}
+                  style={styles.addThemeButton}
                 >
                   {creatingArticle ? "Creating…" : "Create article"}
                 </button>
@@ -377,7 +360,7 @@ export default function CreateNewspaper({
             {loadingAttached ? (
               <div>Loading…</div>
             ) : attached.length === 0 ? (
-              <div style={{ color: "#666" }}>No articles attached yet.</div>
+              <div style={{ color: "var(--muted)" }}>No articles attached yet.</div>
             ) : (
               <div
                 style={{
@@ -389,10 +372,10 @@ export default function CreateNewspaper({
                 {attached.map((a) => (
                   <div
                     key={a.id}
-                    style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}
+                    style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
                   >
                     <div style={{ fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ color: "#555", marginTop: 6 }}>
+                    <div style={{ color: "var(--muted)", marginTop: 6 }}>
                       {previewText(a.content, 140, "No description")}
                     </div>
                     <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
@@ -400,7 +383,7 @@ export default function CreateNewspaper({
                         href={a.url || "#"}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ color: "#2563eb", alignSelf: "center" }}
+                        style={{ ...styles.link, alignSelf: "center" }}
                       >
                         View
                       </a>
@@ -410,10 +393,13 @@ export default function CreateNewspaper({
               </div>
             )}
           </section>
+            </div>
+          )}
+          </div>
         </div>
-      )}
     </div>
-  );
+  </div>
+);
 }
 
 CreateNewspaper.propTypes = {

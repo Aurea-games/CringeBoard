@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 export default function PublicNewspaper({
   apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
@@ -8,6 +10,20 @@ export default function PublicNewspaper({
   const [newspaper, setNewspaper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const e = localStorage.getItem("user_email");
+      setLoggedIn(!!token);
+      setUserEmail(e || null);
+    } catch {
+      setLoggedIn(false);
+    }
+  }, []);
 
   const token = (() => {
     try {
@@ -39,54 +55,86 @@ export default function PublicNewspaper({
     return () => (mounted = false);
   }, [apiBase, token]);
 
-  if (!token) return <div style={{ padding: 20 }}>Invalid public token.</div>;
+  if (!token)
+    return (
+      <div style={styles.appShell}>
+        <div style={styles.appSurface}>
+          <div style={styles.panelCard}>Invalid public token.</div>
+        </div>
+      </div>
+    );
 
   return (
-    <div style={{ padding: 20 }}>
-      <button onClick={() => (window.location.href = "/")}>← Home</button>
-      {loading ? (
-        <div>Loading…</div>
-      ) : error ? (
-        <div style={{ color: "#b02a37" }}>{error}</div>
-      ) : (
-        <div>
-          <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
-          <p>{newspaper.description}</p>
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+          />
 
-          <section style={{ marginTop: 18 }}>
-            <h3>Articles</h3>
-            {!newspaper.articles || newspaper.articles.length === 0 ? (
-              <div style={{ color: "#666" }}>No articles published.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {newspaper.articles.map((a) => (
-                  <div
-                    key={a.id}
-                    style={{ border: "1px solid #eee", padding: 12, borderRadius: 8 }}
-                  >
-                    <div style={{ fontWeight: 700 }}>{a.title}</div>
-                    <div style={{ color: "#555", marginTop: 6 }}>
-                      {previewText(a.content, 160, "No description")}
-                    </div>
-                    <div style={{ marginTop: 8 }}>
-                      {a.url && (
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "#2563eb" }}
-                        >
-                          Read original
-                        </a>
-                      )}
-                    </div>
+          <div style={styles.pageContent}>
+            <header style={{ ...styles.headerMain, marginBottom: 20 }}>
+              <div style={styles.headerTopRow}>
+                <div>
+                  <h1 style={{ margin: 0 }}>CringeBoard</h1>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>Public newspaper</div>
+                </div>
+                {loggedIn && (
+                  <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+                    {userEmail ? `Hi, ${userEmail}` : "Logged in"}
                   </div>
-                ))}
+                )}
+              </div>
+            </header>
+
+            {loading ? (
+              <div>Loading…</div>
+            ) : error ? (
+              <div style={{ color: "#ef4444" }}>{error}</div>
+            ) : (
+              <div>
+                <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
+                <p style={styles.mutedText}>{newspaper.description}</p>
+
+            <section style={{ marginTop: 18 }}>
+              <h3>Articles</h3>
+              {!newspaper.articles || newspaper.articles.length === 0 ? (
+                <div style={{ color: "var(--muted)" }}>No articles published.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 12 }}>
+                  {newspaper.articles.map((a) => (
+                    <div
+                      key={a.id}
+                      style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                      <div style={{ fontWeight: 700 }}>{a.title}</div>
+                      <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                        {previewText(a.content, 160, "No description")}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        {a.url && (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={styles.link}
+                          >
+                            Read original
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
               </div>
             )}
-          </section>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
