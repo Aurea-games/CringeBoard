@@ -138,4 +138,3 @@ export default function PopularArticles({
 PopularArticles.propTypes = {
   apiBase: PropTypes.string,
 };
-

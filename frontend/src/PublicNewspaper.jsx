@@ -79,7 +79,9 @@ export default function PublicNewspaper({
               <div style={styles.headerTopRow}>
                 <div>
                   <h1 style={{ margin: 0 }}>CringeBoard</h1>
-                  <div style={{ marginTop: 6, color: "var(--muted)" }}>Public newspaper</div>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Public newspaper
+                  </div>
                 </div>
                 {loggedIn && (
                   <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
@@ -98,38 +100,43 @@ export default function PublicNewspaper({
                 <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
                 <p style={styles.mutedText}>{newspaper.description}</p>
 
-            <section style={{ marginTop: 18 }}>
-              <h3>Articles</h3>
-              {!newspaper.articles || newspaper.articles.length === 0 ? (
-                <div style={{ color: "var(--muted)" }}>No articles published.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {newspaper.articles.map((a) => (
-                    <div
-                      key={a.id}
-                      style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
-                    >
-                      <div style={{ fontWeight: 700 }}>{a.title}</div>
-                      <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                        {previewText(a.content, 160, "No description")}
-                      </div>
-                      <div style={{ marginTop: 8 }}>
-                        {a.url && (
-                          <a
-                            href={a.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={styles.link}
-                          >
-                            Read original
-                          </a>
-                        )}
-                      </div>
+                <section style={{ marginTop: 18 }}>
+                  <h3>Articles</h3>
+                  {!newspaper.articles || newspaper.articles.length === 0 ? (
+                    <div style={{ color: "var(--muted)" }}>No articles published.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {newspaper.articles.map((a) => (
+                        <div
+                          key={a.id}
+                          style={{
+                            ...styles.panelCard,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                          }}
+                        >
+                          <div style={{ fontWeight: 700 }}>{a.title}</div>
+                          <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                            {previewText(a.content, 160, "No description")}
+                          </div>
+                          <div style={{ marginTop: 8 }}>
+                            {a.url && (
+                              <a
+                                href={a.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={styles.link}
+                              >
+                                Read original
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
+                  )}
+                </section>
               </div>
             )}
           </div>

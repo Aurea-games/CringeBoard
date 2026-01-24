@@ -222,8 +222,7 @@ export const styles = {
     gap: 16,
     padding: 20,
     borderRadius: 16,
-    background:
-      "linear-gradient(120deg, rgba(248,113,113,0.25), rgba(56,189,248,0.2))",
+    background: "linear-gradient(120deg, rgba(248,113,113,0.25), rgba(56,189,248,0.2))",
     border: "1px solid rgba(255,255,255,0.12)",
   },
   bannerTitle: {

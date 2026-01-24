@@ -109,80 +109,85 @@ export default function Register({ apiBase = "http://localhost:8000" }) {
             </header>
 
             <div style={{ ...styles.formCard, maxWidth: 520, margin: "0 auto" }}>
-          <h2 style={{ marginTop: 0 }}>Register</h2>
-          <form onSubmit={handleSubmit}>
-            <label style={{ display: "block", marginBottom: 8 }}>
-              <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
-                Email
+              <h2 style={{ marginTop: 0 }}>Register</h2>
+              <form onSubmit={handleSubmit}>
+                <label style={{ display: "block", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
+                    Email
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 420 }}
+                  />
+                </label>
+
+                <label style={{ display: "block", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
+                    Password
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 420 }}
+                  />
+                </label>
+
+                <label style={{ display: "block", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
+                    Confirm Password
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 420 }}
+                  />
+                </label>
+
+                {error && (
+                  <div style={{ color: "#ef4444", marginBottom: 12 }}>
+                    <strong>Error:</strong> {error}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={styles.addThemeButton}
+                  >
+                    {loading ? "Creating…" : "Create account"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => (window.location.href = "/")}
+                    style={styles.registerButton}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+
+              <div style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}>
+                <div>
+                  Already have an account?{" "}
+                  <a href="/login" style={styles.link}>
+                    Sign in
+                  </a>
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  Development note: form posts to{" "}
+                  <code>{apiBase}/v1/auth/register</code>
+                </div>
               </div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ ...styles.textInput, maxWidth: 420 }}
-              />
-            </label>
-
-            <label style={{ display: "block", marginBottom: 8 }}>
-              <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
-                Password
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ ...styles.textInput, maxWidth: 420 }}
-              />
-            </label>
-
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
-                Confirm Password
-              </div>
-              <input
-                type="password"
-                required
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                style={{ ...styles.textInput, maxWidth: 420 }}
-              />
-            </label>
-
-            {error && (
-              <div style={{ color: "#ef4444", marginBottom: 12 }}>
-                <strong>Error:</strong> {error}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="submit" disabled={loading} style={styles.addThemeButton}>
-                {loading ? "Creating…" : "Create account"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => (window.location.href = "/")}
-                style={styles.registerButton}
-              >
-                Cancel
-              </button>
             </div>
-          </form>
-
-          <div style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}>
-            <div>
-              Already have an account?{" "}
-              <a href="/login" style={styles.link}>
-                Sign in
-              </a>
-            </div>
-            <div style={{ marginTop: 6 }}>
-              Development note: form posts to <code>{apiBase}/v1/auth/register</code>
-            </div>
-          </div>
-        </div>
           </div>
         </div>
       </div>

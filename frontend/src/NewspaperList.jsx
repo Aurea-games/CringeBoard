@@ -119,7 +119,9 @@ export default function NewspaperList({
               <div style={styles.headerTopRow}>
                 <div>
                   <h1 style={{ margin: 0 }}>CringeBoard</h1>
-                  <div style={{ marginTop: 6, color: "var(--muted)" }}>My newspapers</div>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    My newspapers
+                  </div>
                 </div>
                 {loggedIn && (
                   <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
@@ -147,7 +149,8 @@ export default function NewspaperList({
               <div>Loading…</div>
             ) : list.length === 0 ? (
               <div style={{ color: "var(--muted)" }}>
-                No newspapers found. Create one using the &quot;New newspaper&quot; button.
+                No newspapers found. Create one using the &quot;New newspaper&quot;
+                button.
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
@@ -178,7 +181,14 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
   const [description, setDescription] = useState(newspaper.description || "");
 
   return (
-    <div style={{ ...styles.panelCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div
+      style={{
+        ...styles.panelCard,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
       <div style={{ flex: 1 }}>
         {editing ? (
           <div>
@@ -244,16 +254,10 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
             >
               Details
             </a>
-            <button
-              onClick={() => setEditing(true)}
-              style={styles.registerButton}
-            >
+            <button onClick={() => setEditing(true)} style={styles.registerButton}>
               Edit
             </button>
-            <button
-              onClick={() => onDelete(newspaper.id)}
-              style={styles.logoutButton}
-            >
+            <button onClick={() => onDelete(newspaper.id)} style={styles.logoutButton}>
               Delete
             </button>
           </>

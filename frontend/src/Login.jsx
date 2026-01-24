@@ -99,67 +99,67 @@ export default function Login({ apiBase = "http://localhost:8000" }) {
             </header>
 
             <div style={{ ...styles.formCard, maxWidth: 480, margin: "0 auto" }}>
-          <h2 style={{ marginTop: 0 }}>Login</h2>
-          <form onSubmit={handleSubmit}>
-            <label style={{ display: "block", marginBottom: 8 }}>
-              <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
-                Email
+              <h2 style={{ marginTop: 0 }}>Login</h2>
+              <form onSubmit={handleSubmit}>
+                <label style={{ display: "block", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
+                    Email
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 420 }}
+                  />
+                </label>
+
+                <label style={{ display: "block", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
+                    Password
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 420 }}
+                  />
+                </label>
+
+                {error && (
+                  <div style={{ color: "#ef4444", marginBottom: 12 }}>
+                    <strong>Error:</strong> {error}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="submit" disabled={loading} style={styles.loginButton}>
+                    {loading ? "Signing in…" : "Sign in"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => (window.location.href = "/")}
+                    style={styles.registerButton}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+
+              <div style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}>
+                <div>
+                  Don&apos;t have an account?{" "}
+                  <a href="/register" style={styles.link}>
+                    Register
+                  </a>
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  Development note: form posts to <code>{apiBase}/v1/auth/login</code>
+                </div>
               </div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ ...styles.textInput, maxWidth: 420 }}
-              />
-            </label>
-
-            <label style={{ display: "block", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, marginBottom: 6, ...styles.mutedText }}>
-                Password
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ ...styles.textInput, maxWidth: 420 }}
-              />
-            </label>
-
-            {error && (
-              <div style={{ color: "#ef4444", marginBottom: 12 }}>
-                <strong>Error:</strong> {error}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="submit" disabled={loading} style={styles.loginButton}>
-                {loading ? "Signing in…" : "Sign in"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => (window.location.href = "/")}
-                style={styles.registerButton}
-              >
-                Cancel
-              </button>
             </div>
-          </form>
-
-          <div style={{ marginTop: 14, fontSize: 13, color: "var(--muted)" }}>
-            <div>
-              Don&apos;t have an account?{" "}
-              <a href="/register" style={styles.link}>
-                Register
-              </a>
-            </div>
-            <div style={{ marginTop: 6 }}>
-              Development note: form posts to <code>{apiBase}/v1/auth/login</code>
-            </div>
-          </div>
-        </div>
           </div>
         </div>
       </div>

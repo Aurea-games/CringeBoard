@@ -562,7 +562,10 @@ export default function App() {
                       aria-label="Add custom theme"
                       style={styles.themeInput}
                     />
-                    <button onClick={handleAddCustomTheme} style={styles.addThemeButton}>
+                    <button
+                      onClick={handleAddCustomTheme}
+                      style={styles.addThemeButton}
+                    >
                       Add
                     </button>
                   </div>
@@ -603,7 +606,10 @@ export default function App() {
                       aria-label="Add custom source"
                       style={styles.themeInput}
                     />
-                    <button onClick={handleAddCustomSource} style={styles.addThemeButton}>
+                    <button
+                      onClick={handleAddCustomSource}
+                      style={styles.addThemeButton}
+                    >
                       Add
                     </button>
                   </div>
@@ -612,7 +618,9 @@ export default function App() {
 
               <section style={styles.storeContent}>
                 <div style={styles.sectionHeader}>
-                  <h2 style={{ margin: 0 }}>{showPopular ? "Popular right now" : "Latest updates"}</h2>
+                  <h2 style={{ margin: 0 }}>
+                    {showPopular ? "Popular right now" : "Latest updates"}
+                  </h2>
                 </div>
 
                 <div style={styles.updatesList}>
@@ -631,13 +639,20 @@ export default function App() {
                           </div>
                           <div style={styles.updateTags}>
                             {extractHostname(article.url) && (
-                              <span style={styles.tagPill}>{extractHostname(article.url)}</span>
+                              <span style={styles.tagPill}>
+                                {extractHostname(article.url)}
+                              </span>
                             )}
                             <span style={styles.tagPill}>News</span>
                           </div>
                         </div>
                         {article.url && (
-                          <a href={article.url} target="_blank" rel="noreferrer" style={styles.updateButton}>
+                          <a
+                            href={article.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={styles.updateButton}
+                          >
                             Open
                           </a>
                         )}
@@ -645,7 +660,6 @@ export default function App() {
                     ))
                   )}
                 </div>
-
               </section>
             </main>
 
@@ -689,4 +703,3 @@ export default function App() {
 Header.propTypes = {
   onSearch: PropTypes.func,
 };
-

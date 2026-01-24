@@ -100,7 +100,9 @@ export default function NewspaperDetail({
     setSearching(true);
     t = setTimeout(async () => {
       try {
-        const res = await fetch(`${apiBase}/v1/articles/?q=${encodeURIComponent(searchQ)}`);
+        const res = await fetch(
+          `${apiBase}/v1/articles/?q=${encodeURIComponent(searchQ)}`,
+        );
         if (!res.ok) {
           setSearchResults([]);
         } else {
@@ -196,7 +198,8 @@ export default function NewspaperDetail({
   }
 
   async function deleteArticlePermanently(articleId) {
-    if (!window.confirm("Delete this article permanently? This cannot be undone.")) return;
+    if (!window.confirm("Delete this article permanently? This cannot be undone."))
+      return;
     try {
       const res = await fetch(`${apiBase}/v1/articles/${articleId}`, {
         method: "DELETE",
@@ -253,7 +256,9 @@ export default function NewspaperDetail({
               <div style={styles.headerTopRow}>
                 <div>
                   <h1 style={{ margin: 0 }}>CringeBoard</h1>
-                  <div style={{ marginTop: 6, color: "var(--muted)" }}>Newspaper details</div>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Newspaper details
+                  </div>
                 </div>
                 {loggedIn && (
                   <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
@@ -272,152 +277,192 @@ export default function NewspaperDetail({
                 <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
                 <p style={styles.mutedText}>{newspaper.description}</p>
 
-            <section style={{ marginTop: 18 }}>
-              <h3>Attached articles</h3>
-              {attached.length === 0 ? (
-                <div style={{ color: "var(--muted)" }}>No articles attached.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 12 }}>
-                  {attached.map((a) => (
-                    <ArticleEditor
-                      key={a.id}
-                      article={a}
-                      onDelete={deleteArticle}
-                      onSave={patchArticle}
-                      onDeletePermanent={deleteArticlePermanently}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section style={{ marginTop: 24 }}>
-              <h3>Share</h3>
-              {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
-                <div>
-                  <div style={{ marginBottom: 8 }}>
-                    {newspaper.is_public ? (
-                      <span style={{ color: "#10b981" }}>This newspaper is public.</span>
-                    ) : (
-                      <span style={{ color: "#f59e0b" }}>This newspaper is private.</span>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <button onClick={() => toggleShare(!newspaper.is_public)} style={styles.createButton}>
-                      {newspaper.is_public ? "Unshare" : "Make public"}
-                    </button>
-                    {newspaper.is_public && newspaper.public_token && (
-                      <>
-                        <a
-                          href={`/public/newspapers/${newspaper.public_token}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={styles.link}
-                        >
-                          View public page
-                        </a>
-                        <button
-                          onClick={() =>
-                            navigator.clipboard?.writeText(
-                              `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
-                            )
-                          }
-                          style={styles.registerButton}
-                        >
-                          Copy public URL
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ color: "var(--muted)" }}>
-                  Only the owner can change sharing settings.
-                </div>
-              )}
-            </section>
-
-            <section style={{ marginTop: 24 }}>
-              <h3>Create a new article in this newspaper</h3>
-              <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
-                <label style={{ display: "block", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
-                  <input
-                    required
-                    value={aTitle}
-                    onChange={(e) => setATitle(e.target.value)}
-                    style={styles.textInput}
-                  />
-                </label>
-                <label style={{ display: "block", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
-                  <textarea
-                    value={aContent}
-                    onChange={(e) => setAContent(e.target.value)}
-                    rows={6}
-                    style={styles.textArea}
-                  />
-                </label>
-                <label style={{ display: "block", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, marginBottom: 6 }}>Original URL (optional)</div>
-                  <input value={aUrl} onChange={(e) => setAUrl(e.target.value)} style={styles.textInput} />
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button type="submit" disabled={creatingArticle} style={styles.addThemeButton}>
-                    {creatingArticle ? "Creating…" : "Create article"}
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            <section style={{ marginTop: 24 }}>
-              <h3>Attach existing articles</h3>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                <input
-                  placeholder="Search articles to attach"
-                  value={searchQ}
-                  onChange={(e) => setSearchQ(e.target.value)}
-                  style={{ ...styles.textInput, flex: 1 }}
-                />
-                <div style={{ alignSelf: "center", color: "var(--muted)" }}>
-                  {searching ? "Searching…" : ""}
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                {searchResults.map((a) => (
-                  <div
-                    key={a.id}
-                    style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
-                  >
-                    <div style={{ fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                      {a.content
-                        ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "")
-                        : ""}
+                <section style={{ marginTop: 18 }}>
+                  <h3>Attached articles</h3>
+                  {attached.length === 0 ? (
+                    <div style={{ color: "var(--muted)" }}>No articles attached.</div>
+                  ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {attached.map((a) => (
+                        <ArticleEditor
+                          key={a.id}
+                          article={a}
+                          onDelete={deleteArticle}
+                          onSave={patchArticle}
+                          onDeletePermanent={deleteArticlePermanently}
+                        />
+                      ))}
                     </div>
-                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                      <button onClick={() => attachArticle(a.id)} style={styles.loginButton}>
-                        Attach
-                      </button>
-                      <a
-                        href={a.url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ ...styles.link, alignSelf: "center" }}
+                  )}
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Share</h3>
+                  {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
+                    <div>
+                      <div style={{ marginBottom: 8 }}>
+                        {newspaper.is_public ? (
+                          <span style={{ color: "#10b981" }}>
+                            This newspaper is public.
+                          </span>
+                        ) : (
+                          <span style={{ color: "#f59e0b" }}>
+                            This newspaper is private.
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
                       >
-                        View
-                      </a>
+                        <button
+                          onClick={() => toggleShare(!newspaper.is_public)}
+                          style={styles.createButton}
+                        >
+                          {newspaper.is_public ? "Unshare" : "Make public"}
+                        </button>
+                        {newspaper.is_public && newspaper.public_token && (
+                          <>
+                            <a
+                              href={`/public/newspapers/${newspaper.public_token}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={styles.link}
+                            >
+                              View public page
+                            </a>
+                            <button
+                              onClick={() =>
+                                navigator.clipboard?.writeText(
+                                  `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
+                                )
+                              }
+                              style={styles.registerButton}
+                            >
+                              Copy public URL
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--muted)" }}>
+                      Only the owner can change sharing settings.
+                    </div>
+                  )}
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Create a new article in this newspaper</h3>
+                  <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
+                      <input
+                        required
+                        value={aTitle}
+                        onChange={(e) => setATitle(e.target.value)}
+                        style={styles.textInput}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
+                      <textarea
+                        value={aContent}
+                        onChange={(e) => setAContent(e.target.value)}
+                        rows={6}
+                        style={styles.textArea}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>
+                        Original URL (optional)
+                      </div>
+                      <input
+                        value={aUrl}
+                        onChange={(e) => setAUrl(e.target.value)}
+                        style={styles.textInput}
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="submit"
+                        disabled={creatingArticle}
+                        style={styles.addThemeButton}
+                      >
+                        {creatingArticle ? "Creating…" : "Create article"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Attach existing articles</h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginBottom: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <input
+                      placeholder="Search articles to attach"
+                      value={searchQ}
+                      onChange={(e) => setSearchQ(e.target.value)}
+                      style={{ ...styles.textInput, flex: 1 }}
+                    />
+                    <div style={{ alignSelf: "center", color: "var(--muted)" }}>
+                      {searching ? "Searching…" : ""}
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {searchResults.map((a) => (
+                      <div
+                        key={a.id}
+                        style={{
+                          ...styles.panelCard,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{a.title}</div>
+                        <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                          {a.content
+                            ? a.content.slice(0, 140) +
+                              (a.content.length > 140 ? "…" : "")
+                            : ""}
+                        </div>
+                        <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => attachArticle(a.id)}
+                            style={styles.loginButton}
+                          >
+                            Attach
+                          </button>
+                          <a
+                            href={a.url || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ ...styles.link, alignSelf: "center" }}
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
           </div>
@@ -471,7 +516,9 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
             onChange={(e) => setUrl(e.target.value)}
             style={{ ...styles.textInput, marginTop: 8, maxWidth: 1110 }}
           />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}
+          >
             <button onClick={save} disabled={saving} style={styles.addThemeButton}>
               {saving ? "Saving…" : "Save"}
             </button>
@@ -501,11 +548,15 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
             <button onClick={() => onDelete(article.id)} style={styles.logoutButton}>
               Remove
             </button>
-            {Number(localStorage.getItem("user_id")) === article.owner_id && onDeletePermanent && (
-              <button onClick={() => onDeletePermanent(article.id)} style={styles.logoutButton}>
-                Delete permanently
-              </button>
-            )}
+            {Number(localStorage.getItem("user_id")) === article.owner_id &&
+              onDeletePermanent && (
+                <button
+                  onClick={() => onDeletePermanent(article.id)}
+                  style={styles.logoutButton}
+                >
+                  Delete permanently
+                </button>
+              )}
           </div>
         </div>
       )}

@@ -77,7 +77,11 @@ export default function SideMenu({
         ...(collapsed ? styles.sideMenuCollapsed : null),
       }}
     >
-      <button onClick={onToggleCollapse} style={styles.sideMenuToggle} aria-label="Toggle menu">
+      <button
+        onClick={onToggleCollapse}
+        style={styles.sideMenuToggle}
+        aria-label="Toggle menu"
+      >
         <span style={styles.sideMenuIcon}>{collapsed ? "➡️" : "⬅️"}</span>
         <span style={labelStyle}>Menu</span>
       </button>
@@ -109,7 +113,11 @@ export default function SideMenu({
 
         {showNotificationsButton && (
           <div style={styles.sideMenuItemWrapper}>
-            <button onClick={onToggleNotifications} style={buttonBase} aria-label="Notifications">
+            <button
+              onClick={onToggleNotifications}
+              style={buttonBase}
+              aria-label="Notifications"
+            >
               <span style={styles.sideMenuIcon}>🔔</span>
               <span style={labelStyle}>Notifications</span>
               {unreadCount > 0 && (
@@ -119,7 +127,9 @@ export default function SideMenu({
             {showNotifications && (
               <div style={styles.notificationDropdown}>
                 {notifications.length === 0 ? (
-                  <div style={{ color: "var(--muted)", fontSize: 13 }}>No notifications</div>
+                  <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                    No notifications
+                  </div>
                 ) : (
                   notifications.map((n) => (
                     <div key={n.id} style={styles.notificationItem}>

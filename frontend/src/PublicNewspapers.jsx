@@ -61,7 +61,9 @@ export default function PublicNewspapers({
               <div style={styles.headerTopRow}>
                 <div>
                   <h1 style={{ margin: 0 }}>CringeBoard</h1>
-                  <div style={{ marginTop: 6, color: "var(--muted)" }}>Public newspapers</div>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Public newspapers
+                  </div>
                 </div>
                 {loggedIn && (
                   <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
@@ -78,13 +80,20 @@ export default function PublicNewspapers({
             ) : (
               <div>
                 {items.length === 0 ? (
-                  <div style={{ color: "var(--muted)" }}>No public newspapers found.</div>
+                  <div style={{ color: "var(--muted)" }}>
+                    No public newspapers found.
+                  </div>
                 ) : (
                   <div style={{ display: "grid", gap: 12 }}>
                     {items.map((n) => (
                       <div
                         key={n.id}
-                        style={{ ...styles.panelCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                        style={{
+                          ...styles.panelCard,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
                       >
                         <div>
                           <div style={{ fontWeight: 700 }}>{n.title}</div>

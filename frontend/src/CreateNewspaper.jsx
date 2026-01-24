@@ -218,188 +218,198 @@ export default function CreateNewspaper({
                 onSubmit={handleCreateNewspaper}
                 style={{ ...styles.formCard, maxWidth: 720, marginBottom: 24 }}
               >
-          <label style={{ display: "block", marginBottom: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
-            <input
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              style={{ ...styles.textInput, maxWidth: 520 }}
-            />
-          </label>
-          <label style={{ display: "block", marginBottom: 12 }}>
-            <div style={{ fontSize: 13, marginBottom: 6 }}>Description</div>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              style={{ ...styles.textArea, maxWidth: 520 }}
-            />
-          </label>
-          {error && <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="submit"
-              disabled={creating}
-              style={styles.createButton}
-            >
-              {creating ? "Creating…" : "Create newspaper"}
-            </button>
-            <button
-              type="button"
-              onClick={() => (window.location.href = "/")}
-              style={styles.registerButton}
-            >
-              Cancel
-            </button>
-          </div>
-            </form>
-          ) : (
-            <div style={{ maxWidth: 980 }}>
-              <h3 style={{ marginTop: 0 }}>{newspaper.title}</h3>
-          <p style={styles.mutedText}>{newspaper.description}</p>
-
-          <section style={{ marginTop: 18 }}>
-            <h4>Attach existing articles</h4>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                placeholder="Search articles to attach"
-                value={searchQ}
-                onChange={(e) => setSearchQ(e.target.value)}
-                style={{ ...styles.textInput, flex: 1 }}
-              />
-              <div style={{ alignSelf: "center", color: "var(--muted)" }}>
-                {searching ? "Searching…" : ""}
-              </div>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {searchResults.map((a) => (
-                <div
-                  key={a.id}
-                  style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                    {previewText(a.content, 140, "No description")}
-                  </div>
-                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => attachArticle(a.id)}
-                      style={styles.loginButton}
-                    >
-                      Attach
-                    </button>
-                    <a
-                      href={a.url || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ ...styles.link, alignSelf: "center" }}
-                    >
-                      View
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section style={{ marginTop: 24 }}>
-            <h4>Create a new article in this newspaper</h4>
-            <form onSubmit={handleCreateArticle} style={{ maxWidth: 720 }}>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
-                <input
-                  value={aTitle}
-                  onChange={(e) => setATitle(e.target.value)}
-                  required
-                  style={styles.textInput}
-                />
-              </label>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
-                <textarea
-                  value={aContent}
-                  onChange={(e) => setAContent(e.target.value)}
-                  rows={6}
-                  style={styles.textArea}
-                />
-              </label>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>
-                  Original URL (optional)
-                </div>
-                <input
-                  value={aUrl}
-                  onChange={(e) => setAUrl(e.target.value)}
-                  style={styles.textInput}
-                />
-              </label>
-              {error && (
-                <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
-              )}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="submit"
-                  disabled={creatingArticle}
-                  style={styles.addThemeButton}
-                >
-                  {creatingArticle ? "Creating…" : "Create article"}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <section style={{ marginTop: 24 }}>
-            <h4>Attached articles</h4>
-            {loadingAttached ? (
-              <div>Loading…</div>
-            ) : attached.length === 0 ? (
-              <div style={{ color: "var(--muted)" }}>No articles attached yet.</div>
-            ) : (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                {attached.map((a) => (
-                  <div
-                    key={a.id}
-                    style={{ ...styles.panelCard, display: "flex", flexDirection: "column", gap: 8 }}
+                <label style={{ display: "block", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
+                  <input
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    style={{ ...styles.textInput, maxWidth: 520 }}
+                  />
+                </label>
+                <label style={{ display: "block", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, marginBottom: 6 }}>Description</div>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={4}
+                    style={{ ...styles.textArea, maxWidth: 520 }}
+                  />
+                </label>
+                {error && (
+                  <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="submit" disabled={creating} style={styles.createButton}>
+                    {creating ? "Creating…" : "Create newspaper"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => (window.location.href = "/")}
+                    style={styles.registerButton}
                   >
-                    <div style={{ fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ color: "var(--muted)", marginTop: 6 }}>
-                      {previewText(a.content, 140, "No description")}
-                    </div>
-                    <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                      <a
-                        href={a.url || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ ...styles.link, alignSelf: "center" }}
-                      >
-                        View
-                      </a>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div style={{ maxWidth: 980 }}>
+                <h3 style={{ marginTop: 0 }}>{newspaper.title}</h3>
+                <p style={styles.mutedText}>{newspaper.description}</p>
+
+                <section style={{ marginTop: 18 }}>
+                  <h4>Attach existing articles</h4>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input
+                      placeholder="Search articles to attach"
+                      value={searchQ}
+                      onChange={(e) => setSearchQ(e.target.value)}
+                      style={{ ...styles.textInput, flex: 1 }}
+                    />
+                    <div style={{ alignSelf: "center", color: "var(--muted)" }}>
+                      {searching ? "Searching…" : ""}
                     </div>
                   </div>
-                ))}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {searchResults.map((a) => (
+                      <div
+                        key={a.id}
+                        style={{
+                          ...styles.panelCard,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{a.title}</div>
+                        <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                          {previewText(a.content, 140, "No description")}
+                        </div>
+                        <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => attachArticle(a.id)}
+                            style={styles.loginButton}
+                          >
+                            Attach
+                          </button>
+                          <a
+                            href={a.url || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ ...styles.link, alignSelf: "center" }}
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h4>Create a new article in this newspaper</h4>
+                  <form onSubmit={handleCreateArticle} style={{ maxWidth: 720 }}>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
+                      <input
+                        value={aTitle}
+                        onChange={(e) => setATitle(e.target.value)}
+                        required
+                        style={styles.textInput}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
+                      <textarea
+                        value={aContent}
+                        onChange={(e) => setAContent(e.target.value)}
+                        rows={6}
+                        style={styles.textArea}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>
+                        Original URL (optional)
+                      </div>
+                      <input
+                        value={aUrl}
+                        onChange={(e) => setAUrl(e.target.value)}
+                        style={styles.textInput}
+                      />
+                    </label>
+                    {error && (
+                      <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>
+                    )}
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="submit"
+                        disabled={creatingArticle}
+                        style={styles.addThemeButton}
+                      >
+                        {creatingArticle ? "Creating…" : "Create article"}
+                      </button>
+                    </div>
+                  </form>
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h4>Attached articles</h4>
+                  {loadingAttached ? (
+                    <div>Loading…</div>
+                  ) : attached.length === 0 ? (
+                    <div style={{ color: "var(--muted)" }}>
+                      No articles attached yet.
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                        gap: 12,
+                      }}
+                    >
+                      {attached.map((a) => (
+                        <div
+                          key={a.id}
+                          style={{
+                            ...styles.panelCard,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                          }}
+                        >
+                          <div style={{ fontWeight: 600 }}>{a.title}</div>
+                          <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                            {previewText(a.content, 140, "No description")}
+                          </div>
+                          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                            <a
+                              href={a.url || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ ...styles.link, alignSelf: "center" }}
+                            >
+                              View
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
               </div>
             )}
-          </section>
-            </div>
-          )}
           </div>
         </div>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 CreateNewspaper.propTypes = {
