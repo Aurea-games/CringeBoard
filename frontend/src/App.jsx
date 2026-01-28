@@ -631,7 +631,6 @@ export default function App() {
                   ) : (
                     articles.slice(0, 5).map((article) => (
                       <div key={article.id || article.title} style={styles.updateRow}>
-                        <div style={styles.updateIcon} />
                         <div style={styles.updateMeta}>
                           <div style={{ fontWeight: 600 }}>{article.title}</div>
                           <div style={{ color: "var(--muted)", fontSize: 13 }}>

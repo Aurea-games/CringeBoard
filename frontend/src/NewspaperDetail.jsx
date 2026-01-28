@@ -297,66 +297,6 @@ export default function NewspaperDetail({
                 </section>
 
                 <section style={{ marginTop: 24 }}>
-                  <h3>Share</h3>
-                  {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
-                    <div>
-                      <div style={{ marginBottom: 8 }}>
-                        {newspaper.is_public ? (
-                          <span style={{ color: "#10b981" }}>
-                            This newspaper is public.
-                          </span>
-                        ) : (
-                          <span style={{ color: "#f59e0b" }}>
-                            This newspaper is private.
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <button
-                          onClick={() => toggleShare(!newspaper.is_public)}
-                          style={styles.createButton}
-                        >
-                          {newspaper.is_public ? "Unshare" : "Make public"}
-                        </button>
-                        {newspaper.is_public && newspaper.public_token && (
-                          <>
-                            <a
-                              href={`/public/newspapers/${newspaper.public_token}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={styles.link}
-                            >
-                              View public page
-                            </a>
-                            <button
-                              onClick={() =>
-                                navigator.clipboard?.writeText(
-                                  `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
-                                )
-                              }
-                              style={styles.registerButton}
-                            >
-                              Copy public URL
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ color: "var(--muted)" }}>
-                      Only the owner can change sharing settings.
-                    </div>
-                  )}
-                </section>
-
-                <section style={{ marginTop: 24 }}>
                   <h3>Create a new article in this newspaper</h3>
                   <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
                     <label style={{ display: "block", marginBottom: 8 }}>
@@ -462,6 +402,65 @@ export default function NewspaperDetail({
                       </div>
                     ))}
                   </div>
+                </section>
+                <section style={{ marginTop: 24 }}>
+                  <h3>Share</h3>
+                  {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
+                    <div>
+                      <div style={{ marginBottom: 8 }}>
+                        {newspaper.is_public ? (
+                          <span style={{ color: "#10b981" }}>
+                            This newspaper is public.
+                          </span>
+                        ) : (
+                          <span style={{ color: "#f59e0b" }}>
+                            This newspaper is private.
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          onClick={() => toggleShare(!newspaper.is_public)}
+                          style={styles.createButton}
+                        >
+                          {newspaper.is_public ? "Unshare" : "Make public"}
+                        </button>
+                        {newspaper.is_public && newspaper.public_token && (
+                          <>
+                            <a
+                              href={`/public/newspapers/${newspaper.public_token}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={styles.link}
+                            >
+                              View public page
+                            </a>
+                            <button
+                              onClick={() =>
+                                navigator.clipboard?.writeText(
+                                  `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
+                                )
+                              }
+                              style={styles.registerButton}
+                            >
+                              Copy public URL
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--muted)" }}>
+                      Only the owner can change sharing settings.
+                    </div>
+                  )}
                 </section>
               </div>
             )}
