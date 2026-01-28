@@ -9,6 +9,9 @@ import NewspaperDetail from "./NewspaperDetail.jsx";
 import FavoriteArticle from "./FavoriteArticle.jsx";
 import PublicNewspaper from "./PublicNewspaper.jsx";
 import PublicNewspapers from "./PublicNewspapers.jsx";
+import { ArticleCard } from "./ArticleCard.jsx";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 function resolveApiBase() {
   const envBase =
@@ -67,15 +70,7 @@ function normalizeSourceLabel(label) {
     .trim()
     .toLowerCase();
 }
-function Header({
-  onSearch,
-  onPopularToggle,
-  showPopular,
-  notifications,
-  onToggleNotifications,
-  showNotifications,
-  unreadCount,
-}) {
+function Header({ onSearch }) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [email, setEmail] = useState(null);
 
@@ -94,374 +89,26 @@ function Header({
     if (saved === "dark") document.body.classList.add("dark");
   }, []);
 
-  function toggleTheme() {
-    const isDark = document.body.classList.toggle("dark");
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-  }
-
-  function handleLogout() {
-    try {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("user_email");
-    } catch (err) {
-      console.error("Failed to clear auth tokens", err);
-    }
-    window.location.href = "/";
-  }
-
-  function goLogin() {
-    window.location.href = "/login";
-  }
-
-  function goRegister() {
-    window.location.href = "/register";
-  }
-
-  function goCreateNewspaper() {
-    window.location.href = "/newspapers/create";
-  }
-
-  function goNewspapers() {
-    window.location.href = "/newspapers";
-  }
-
-  function goFavorites() {
-    window.location.href = "/favorites";
-  }
-
-  function goPublicNewspapers() {
-    window.location.href = "/public/newspapers";
-  }
-
   return (
-    <header style={styles.header}>
-      <h1 style={{ margin: 0 }}>CringeBoard</h1>
-
-      <div style={styles.headerRight}>
-        <input
-          placeholder="Search articles..."
-          aria-label="Search articles"
-          onChange={(e) => onSearch(e.target.value)}
-          style={styles.searchInput}
-        />
-
-        <button
-          onClick={onPopularToggle}
-          style={{
-            ...styles.registerButton,
-            background: showPopular ? "#2563eb" : "var(--card-bg)",
-            color: showPopular ? "white" : "var(--text)",
-          }}
-        >
-          Popular
-        </button>
-
-        <button onClick={toggleTheme} style={styles.registerButton}>
-          Toggle theme
-        </button>
-
-        <div style={styles.notificationWrapper}>
-          <button
-            onClick={onToggleNotifications}
-            style={styles.registerButton}
-            aria-label="Notifications"
-          >
-            Bell
-            {unreadCount > 0 && (
-              <span style={styles.notificationBadge}>{unreadCount}</span>
-            )}
-          </button>
-          {showNotifications && (
-            <div style={styles.notificationDropdown}>
-              {notifications.length === 0 ? (
-                <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                  No notifications
-                </div>
-              ) : (
-                notifications.map((n) => (
-                  <div key={n.id} style={styles.notificationItem}>
-                    <div style={{ fontWeight: n.is_read ? "normal" : "600" }}>
-                      {n.message}
-                    </div>
-                    <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                      {n.created_at || ""}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {loggedIn ? (
-          <>
-            <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
-              {email ? `Hi, ${email}` : "Logged in"}
-            </div>
-
-            <button onClick={goCreateNewspaper} style={styles.createButton}>
-              New newspaper
-            </button>
-
-            <button onClick={goNewspapers} style={styles.createButton}>
-              My newspapers
-            </button>
-
-            <button onClick={goFavorites} style={styles.createButton}>
-              Favorites
-            </button>
-
-            <button onClick={goPublicNewspapers} style={styles.createButton}>
-              Public newspapers
-            </button>
-
-            <button onClick={handleLogout} style={styles.logoutButton}>
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={goLogin} style={styles.loginButton}>
-              Login
-            </button>
-            <button onClick={goRegister} style={styles.registerButton}>
-              Register
-            </button>
-          </>
+    <header style={styles.headerMain}>
+      <div style={styles.headerTopRow}>
+        <h1 style={{ margin: 0 }}>CringeBoard</h1>
+        {loggedIn && (
+          <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+            {email ? `Hi, ${email}` : "Logged in"}
+          </div>
         )}
       </div>
+
+      <input
+        placeholder="Search articles..."
+        aria-label="Search articles"
+        onChange={(e) => onSearch(e.target.value)}
+        style={styles.searchInput}
+      />
     </header>
   );
 }
-
-export function ArticleCard({ article, isFavorited = false, onFavoriteToggle }) {
-  const [flipped, setFlipped] = useState(false);
-
-  const [favorited, setFavorited] = useState(isFavorited);
-  const [related, setRelated] = useState([]);
-  const [relatedLoading, setRelatedLoading] = useState(false);
-  const [relatedError, setRelatedError] = useState(null);
-  const [showRelated, setShowRelated] = useState(false);
-
-  // Fetch articles from server with optional server-side search (debounced)
-  useEffect(() => {
-    setFavorited(isFavorited);
-  }, [isFavorited]);
-
-  function toggleFlip() {
-    setFlipped((v) => !v);
-  }
-
-  function handleKey(e) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggleFlip();
-    }
-  }
-
-  async function handleFavorite(e) {
-    e.stopPropagation();
-    const token = localStorage.getItem("access_token");
-    if (!token) return alert("Login to favorite articles");
-
-    const previousState = favorited;
-    const nextState = !previousState;
-    setFavorited(nextState);
-
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      let response;
-
-      if (nextState) {
-        headers["Content-Type"] = "application/json";
-        response = await fetch(`${apiBase}/v1/me/favorites`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ article_id: article.id }),
-        });
-      } else {
-        response = await fetch(`${apiBase}/v1/me/favorites/${article.id}`, {
-          method: "DELETE",
-          headers,
-        });
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to ${nextState ? "favorite" : "unfavorite"} article`);
-      }
-
-      if (onFavoriteToggle) onFavoriteToggle(article.id, nextState);
-    } catch (err) {
-      console.error(err);
-      setFavorited(previousState);
-      alert("Could not update favorite status");
-    }
-  }
-
-  async function fetchRelated(e) {
-    e.stopPropagation();
-    if (!article?.id) return;
-    if (related.length > 0) {
-      setShowRelated((v) => !v);
-      return;
-    }
-    setRelatedLoading(true);
-    setRelatedError(null);
-    try {
-      const res = await fetch(`${apiBase}/v1/articles/${article.id}/related`);
-      if (!res.ok) throw new Error("Failed to load related articles");
-      const data = await res.json();
-      setRelated(Array.isArray(data) ? data.slice(0, 5) : []);
-      setShowRelated(true);
-    } catch (err) {
-      console.warn(err);
-      setRelatedError("Could not load related articles");
-    } finally {
-      setRelatedLoading(false);
-    }
-  }
-
-  const frontStyle = {
-    ...styles.card,
-    ...styles.front,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    backfaceVisibility: "hidden",
-    opacity: flipped ? 0 : 1,
-    visibility: flipped ? "hidden" : "visible",
-    transition: "opacity 0.25s ease",
-  };
-
-  const backStyle = {
-    ...styles.card,
-    ...styles.back,
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    backfaceVisibility: "hidden",
-    transform: "rotateY(180deg)",
-    opacity: flipped ? 1 : 0,
-    visibility: flipped ? "visible" : "hidden",
-    transition: "opacity 0.25s ease",
-    color: "var(--text)",
-  };
-
-  return (
-    <div
-      style={{ ...styles.flipContainer, width: "100%", display: "block" }}
-      onClick={toggleFlip}
-      onKeyDown={handleKey}
-      role="button"
-      tabIndex={0}
-      aria-pressed={flipped}
-    >
-      <div
-        style={{
-          ...styles.flipper,
-          transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
-          minHeight: 110,
-        }}
-      >
-        <article style={frontStyle}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 6,
-            }}
-          >
-            <button
-              onClick={fetchRelated}
-              style={{ ...styles.pillButton, opacity: article?.id ? 1 : 0.5 }}
-              disabled={!article?.id || relatedLoading}
-            >
-              {relatedLoading ? "Loading…" : showRelated ? "Hide similar" : "Similar"}
-            </button>
-          </div>
-          <h3 style={{ margin: 0, textAlign: "left", color: "var(--text)" }}>
-            {article.title}
-          </h3>
-          <div
-            onClick={handleFavorite}
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              fontSize: 20,
-              color: favorited ? "#facc15" : "#aaa",
-              cursor: "pointer",
-            }}
-            title={favorited ? "Favorited" : "Add to favorites"}
-          >
-            ★
-          </div>
-        </article>
-
-        <article style={backStyle}>
-          <p style={{ margin: 0, color: "var(--muted)" }}>
-            {previewText(article.content, 160, "No description")}
-          </p>
-
-          {showRelated && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Similar articles</div>
-              {relatedError && (
-                <div style={{ color: "#ef4444", fontSize: 13 }}>{relatedError}</div>
-              )}
-              {related.length === 0 && !relatedError && !relatedLoading && (
-                <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                  No related articles found.
-                </div>
-              )}
-              <ul style={{ paddingLeft: 16, margin: 0, display: "grid", gap: 6 }}>
-                {related.map((item) => (
-                  <li key={item.id || item.title} style={{ lineHeight: 1.3 }}>
-                    <a
-                      href={item.url || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ color: "#2563eb" }}
-                    >
-                      {item.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div style={{ marginTop: 10 }}>
-            {article.url && (
-              <a
-                href={article.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: "#3b82f6" }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                Read original
-              </a>
-            )}
-          </div>
-        </article>
-      </div>
-    </div>
-  );
-}
-
-ArticleCard.propTypes = {
-  article: PropTypes.object.isRequired,
-  isFavorited: PropTypes.bool,
-  onFavoriteToggle: PropTypes.func,
-};
 
 export default function App() {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
@@ -470,6 +117,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPopular, setShowPopular] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState(() => new Set());
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -496,6 +145,15 @@ export default function App() {
   });
   const [customSource, setCustomSource] = useState("");
   const [sourceSuggestions, setSourceSuggestions] = useState([]);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("access_token");
+      setLoggedIn(!!token);
+    } catch {
+      setLoggedIn(false);
+    }
+  }, []);
 
   const syncFavoritesFromList = useCallback((items = []) => {
     const safeItems = Array.isArray(items) ? items : [];
@@ -873,167 +531,168 @@ export default function App() {
   if (publicMatch) return <PublicNewspaper apiBase={apiBase} />;
 
   return (
-    <div
-      style={{
-        fontFamily: "Inter, system-ui, sans-serif",
-        padding: 20,
-        color: "var(--text)",
-      }}
-    >
-      <Header
-        onSearch={(q) => {
-          setQuery(q);
-          setShowPopular(false);
-        }}
-        onPopularToggle={() => setShowPopular((v) => !v)}
-        showPopular={showPopular}
-        notifications={notifications}
-        onToggleNotifications={handleToggleNotifications}
-        showNotifications={showNotifications}
-        unreadCount={unreadCount}
-      />
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+            showPopularButton
+            showPopular={showPopular}
+            onPopularToggle={() => setShowPopular((v) => !v)}
+            showNotificationsButton
+            notifications={notifications}
+            showNotifications={showNotifications}
+            onToggleNotifications={handleToggleNotifications}
+            unreadCount={unreadCount}
+          />
 
-      <main>
-        <section style={styles.preferencesPanel}>
-          <div
-            style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}
-          >
-            <h2 style={{ margin: 0, fontSize: 18 }}>Preferred themes</h2>
-            <span style={{ color: "var(--muted)" }}>
-              Pick topics to prioritize matching articles in your feed.
-            </span>
-          </div>
-
-          <div style={styles.themeChips}>
-            {suggestedThemes.map((theme) => {
-              const active = selectedThemes.includes(theme);
-              return (
-                <button
-                  key={theme}
-                  onClick={() => toggleThemePreference(theme)}
-                  style={{
-                    ...styles.themeChip,
-                    background: active ? "#2563eb" : "var(--card-bg)",
-                    color: active ? "white" : "var(--text)",
-                    borderColor: active ? "#2563eb" : "var(--border)",
-                  }}
-                >
-                  {theme}
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={styles.customThemeRow}>
-            <input
-              value={customTheme}
-              onChange={(e) => setCustomTheme(e.target.value)}
-              placeholder="Add your own theme (e.g. Climate)"
-              aria-label="Add custom theme"
-              style={styles.themeInput}
+          <div style={styles.pageContent}>
+            <Header
+              onSearch={(q) => {
+                setQuery(q);
+                setShowPopular(false);
+              }}
             />
-            <button onClick={handleAddCustomTheme} style={styles.addThemeButton}>
-              Add
-            </button>
-            {selectedThemes.length > 0 && (
-              <button
-                onClick={() => setSelectedThemes([])}
-                style={{
-                  ...styles.addThemeButton,
-                  background: "var(--card-bg)",
-                  color: "var(--text)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
 
-          {selectedThemes.length > 0 && (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>
-              Prioritizing articles matching: {selectedThemes.join(", ")}
-            </div>
-          )}
-        </section>
+            <main style={styles.storeLayout}>
+              <aside style={styles.storeSidebar}>
+                <div style={styles.sidebarSection}>
+                  <div style={styles.sidebarTitle}>Preferred themes</div>
+                  <div style={styles.themeChips}>
+                    {suggestedThemes.map((theme) => {
+                      const active = selectedThemes.includes(theme);
+                      return (
+                        <button
+                          key={theme}
+                          onClick={() => toggleThemePreference(theme)}
+                          style={{
+                            ...styles.themeChip,
+                            background: active ? "#2563eb" : "var(--card-bg)",
+                            color: active ? "white" : "var(--text)",
+                            borderColor: active ? "#2563eb" : "var(--border)",
+                          }}
+                        >
+                          {theme}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={styles.customThemeRow}>
+                    <input
+                      value={customTheme}
+                      onChange={(e) => setCustomTheme(e.target.value)}
+                      placeholder="Add a theme"
+                      aria-label="Add custom theme"
+                      style={styles.themeInput}
+                    />
+                    <button
+                      onClick={handleAddCustomTheme}
+                      style={styles.addThemeButton}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
 
-        <section style={styles.preferencesPanel}>
-          <div
-            style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}
-          >
-            <h2 style={{ margin: 0, fontSize: 18 }}>Preferred sources</h2>
-            <span style={{ color: "var(--muted)" }}>
-              Boost articles coming from these domains or names.
-            </span>
-          </div>
+                <div style={styles.sidebarSection}>
+                  <div style={styles.sidebarTitle}>Preferred sources</div>
+                  <div style={styles.themeChips}>
+                    {sourceSuggestions.map((source) => {
+                      const label = source?.name || source;
+                      const active = selectedSources.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => toggleSourcePreference(label)}
+                          style={{
+                            ...styles.themeChip,
+                            background: active ? "#2563eb" : "var(--card-bg)",
+                            color: active ? "white" : "var(--text)",
+                            borderColor: active ? "#2563eb" : "var(--border)",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                    {sourceSuggestions.length === 0 && (
+                      <span style={{ color: "var(--muted)" }}>
+                        No sources loaded yet.
+                      </span>
+                    )}
+                  </div>
+                  <div style={styles.customThemeRow}>
+                    <input
+                      value={customSource}
+                      onChange={(e) => setCustomSource(e.target.value)}
+                      placeholder="Add a source"
+                      aria-label="Add custom source"
+                      style={styles.themeInput}
+                    />
+                    <button
+                      onClick={handleAddCustomSource}
+                      style={styles.addThemeButton}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </aside>
 
-          <div style={styles.themeChips}>
-            {sourceSuggestions.map((source) => {
-              const active = selectedSources.includes(source);
-              return (
-                <button
-                  key={source}
-                  onClick={() => toggleSourcePreference(source)}
-                  style={{
-                    ...styles.themeChip,
-                    background: active ? "#2563eb" : "var(--card-bg)",
-                    color: active ? "white" : "var(--text)",
-                    borderColor: active ? "#2563eb" : "var(--border)",
-                  }}
-                >
-                  {source}
-                </button>
-              );
-            })}
-            {sourceSuggestions.length === 0 && (
-              <span style={{ color: "var(--muted)" }}>
-                No sources loaded yet. Add your own below.
-              </span>
-            )}
-          </div>
+              <section style={styles.storeContent}>
+                <div style={styles.sectionHeader}>
+                  <h2 style={{ margin: 0 }}>
+                    {showPopular ? "Popular right now" : "Latest updates"}
+                  </h2>
+                </div>
 
-          <div style={styles.customThemeRow}>
-            <input
-              value={customSource}
-              onChange={(e) => setCustomSource(e.target.value)}
-              placeholder="Add a domain or source name (e.g. nytimes.com)"
-              aria-label="Add custom source"
-              style={styles.themeInput}
-            />
-            <button onClick={handleAddCustomSource} style={styles.addThemeButton}>
-              Add
-            </button>
-            {selectedSources.length > 0 && (
-              <button
-                onClick={() => setSelectedSources([])}
-                style={{
-                  ...styles.addThemeButton,
-                  background: "var(--card-bg)",
-                  color: "var(--text)",
-                  border: "1px solid var(--border)",
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
+                <div style={styles.updatesList}>
+                  {loading ? (
+                    <div style={{ color: "var(--muted)" }}>Loading articles…</div>
+                  ) : articles.length === 0 ? (
+                    <div style={{ color: "var(--muted)" }}>No articles found.</div>
+                  ) : (
+                    articles.slice(0, 5).map((article) => (
+                      <div key={article.id || article.title} style={styles.updateRow}>
+                        <div style={styles.updateIcon} />
+                        <div style={styles.updateMeta}>
+                          <div style={{ fontWeight: 600 }}>{article.title}</div>
+                          <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                            {previewText(article.content, 110)}
+                          </div>
+                          <div style={styles.updateTags}>
+                            {extractHostname(article.url) && (
+                              <span style={styles.tagPill}>
+                                {extractHostname(article.url)}
+                              </span>
+                            )}
+                            <span style={styles.tagPill}>News</span>
+                          </div>
+                        </div>
+                        {article.url && (
+                          <a
+                            href={article.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={styles.updateButton}
+                          >
+                            Open
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+            </main>
 
-          {selectedSources.length > 0 && (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>
-              Prioritizing articles from: {selectedSources.join(", ")}
-            </div>
-          )}
-        </section>
-
-        <section style={{ margin: "20px 0" }}>
-          {loading ? (
-            <p>Loading articles…</p>
-          ) : (
-            <>
+            <section style={{ marginTop: 18 }}>
+              <h3 style={{ margin: "0 0 8px 0" }}>Browse Articles</h3>
               {error && (
                 <div style={{ marginBottom: 12, color: "#ef4444" }}>
-                  <strong>Warning:</strong> Failed to fetch articles: {error}. Showing
-                  sample data.
+                  <strong>Warning:</strong> Failed to fetch articles: {error}.
                 </div>
               )}
 
@@ -1047,214 +706,25 @@ export default function App() {
                     <ArticleCard
                       key={article.id || article.title}
                       article={article}
+                      apiBase={apiBase}
                       isFavorited={article.id != null && favoriteIds.has(article.id)}
                       onFavoriteToggle={handleFavoriteStateChange}
                     />
                   ))
                 )}
               </div>
-            </>
-          )}
-        </section>
-      </main>
+            </section>
 
-      <footer style={{ marginTop: 36, color: "var(--muted)" }}>
-        <small>API base: {apiBase}</small>
-      </footer>
+            <footer style={{ marginTop: 24, color: "var(--muted)" }}>
+              <small>API base: {apiBase}</small>
+            </footer>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 Header.propTypes = {
   onSearch: PropTypes.func,
-  onPopularToggle: PropTypes.func,
-  showPopular: PropTypes.bool,
-  notifications: PropTypes.array,
-  onToggleNotifications: PropTypes.func,
-  showNotifications: PropTypes.bool,
-  unreadCount: PropTypes.number,
-};
-
-const styles = {
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  headerRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  searchInput: {
-    padding: "8px 10px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    minWidth: 220,
-    background: "var(--card-bg)",
-    color: "var(--text)",
-  },
-  loginButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "none",
-    background: "#2563eb",
-    color: "white",
-    cursor: "pointer",
-  },
-  logoutButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "none",
-    background: "#ef4444",
-    color: "white",
-    cursor: "pointer",
-  },
-  registerButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    color: "var(--text)",
-    cursor: "pointer",
-  },
-  createButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "#06b6d4",
-    color: "white",
-    cursor: "pointer",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "24px 40px",
-  },
-  flipContainer: {
-    perspective: "1000px",
-    cursor: "pointer",
-    display: "block",
-    position: "relative",
-    minHeight: 140,
-  },
-  flipper: {
-    position: "relative",
-    transformStyle: "preserve-3d",
-    transition: "transform 0.6s",
-  },
-  front: {
-    backfaceVisibility: "hidden",
-    position: "relative",
-    zIndex: 2,
-  },
-  back: {
-    transform: "rotateY(180deg)",
-    backfaceVisibility: "hidden",
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-  },
-  card: {
-    padding: 16,
-    borderRadius: 8,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    minHeight: 110,
-    cursor: "pointer",
-    width: "100%",
-    color: "var(--text)",
-  },
-  preferencesPanel: {
-    marginTop: 18,
-    marginBottom: 16,
-    padding: 16,
-    border: "1px solid var(--border)",
-    borderRadius: 10,
-    background: "var(--card-bg)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-  themeChips: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  themeChip: {
-    padding: "8px 12px",
-    borderRadius: 999,
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    cursor: "pointer",
-    fontSize: 14,
-  },
-  customThemeRow: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-    flexWrap: "wrap",
-  },
-  themeInput: {
-    padding: "8px 10px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    color: "var(--text)",
-    minWidth: 240,
-  },
-  addThemeButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "none",
-    background: "#16a34a",
-    color: "white",
-    cursor: "pointer",
-  },
-  notificationWrapper: {
-    position: "relative",
-    display: "inline-block",
-  },
-  notificationBadge: {
-    marginLeft: 6,
-    background: "#ef4444",
-    color: "white",
-    borderRadius: 999,
-    padding: "0 6px",
-    fontSize: 12,
-  },
-  notificationDropdown: {
-    position: "absolute",
-    top: "110%",
-    right: 0,
-    width: 260,
-    maxHeight: 320,
-    overflowY: "auto",
-    background: "var(--card-bg)",
-    border: "1px solid var(--border)",
-    borderRadius: 8,
-    padding: 10,
-    boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-    zIndex: 20,
-  },
-  notificationItem: {
-    padding: "6px 0",
-    borderBottom: "1px solid var(--border)",
-  },
-  pillButton: {
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    color: "var(--text)",
-    cursor: "pointer",
-    fontSize: 13,
-  },
 };

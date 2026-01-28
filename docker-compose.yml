@@ -54,6 +54,11 @@ services:
       FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
       FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
       RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      NEWSAPI_QUERY: ${NEWSAPI_QUERY:-}
+      NEWSAPI_COUNTRY: ${NEWSAPI_COUNTRY:-us}
+      NEWSAPI_CATEGORY: ${NEWSAPI_CATEGORY:-technology}
+      NEWSAPI_PAGE_SIZE: ${NEWSAPI_PAGE_SIZE:-20}
     ports:
       - "${API_PORT:-8000}:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -67,9 +72,8 @@ services:
       api:
         condition: service_started
     environment:
-      # Use a host-reachable URL so the browser can talk to the API (not the Docker DNS entry)
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
-      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:8000}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://api:8000}
+      REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://api:8000}
       NODE_ENV: ${NODE_ENV:-development}
     ports:
       - "${WEB_PORT:-3000}:3000"
@@ -93,7 +97,25 @@ services:
       FLIPBOARD_MAGAZINES: ${FLIPBOARD_MAGAZINES:-bbcnews/top-stories-hc55lmo2z}
       FLIPBOARD_ACCOUNTS: ${FLIPBOARD_ACCOUNTS:-}
       RSS_FEEDS: ${RSS_FEEDS:-https://hnrss.org/frontpage,https://www.wired.com/feed/rss}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      NEWSAPI_QUERY: ${NEWSAPI_QUERY:-}
+      NEWSAPI_COUNTRY: ${NEWSAPI_COUNTRY:-us}
+      NEWSAPI_CATEGORY: ${NEWSAPI_CATEGORY:-technology}
+      NEWSAPI_PAGE_SIZE: ${NEWSAPI_PAGE_SIZE:-20}
     command: python -m app.scheduler
+
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    restart: unless-stopped
+    environment:
+      SWAGGER_JSON: /usr/share/nginx/html/openapi.yaml
+    volumes:
+      - ./Doc/API_Swagger.yaml:/usr/share/nginx/html/openapi.yaml:ro
+    ports:
+      - "${SWAGGER_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_started
 
   pgadmin:
     image: dpage/pgadmin4:latest

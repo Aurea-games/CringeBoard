@@ -24,6 +24,8 @@ A `.env` file is provided (see `.env.example`). Key variables:
 - `API_PORT` / `WEB_PORT` / `PGADMIN_PORT` / `REDIS_PORT`
 - `CORS_ORIGINS` (CORS origins on the API side)
 - `VITE_API_BASE_URL` (API base URL on the frontend side)
+- Aggregator: `SCHEDULER_INTERVAL`, `FLIPBOARD_MAGAZINES`, `FLIPBOARD_ACCOUNTS`, `RSS_FEEDS`
+- NewsAPI (optional): `NEWSAPI_KEY` (required to fetch from NewsAPI) plus optional `NEWSAPI_QUERY` / `NEWSAPI_COUNTRY` / `NEWSAPI_CATEGORY` / `NEWSAPI_PAGE_SIZE`
 
 Edit `.env` if needed, then run `docker compose up -d` again.
 
