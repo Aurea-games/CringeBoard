@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import PropTypes from "prop-types";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 export default function NewspaperList({
   apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
@@ -9,6 +11,20 @@ export default function NewspaperList({
   const [error, setError] = useState(null);
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const e = localStorage.getItem("user_email");
+      setLoggedIn(!!token);
+      setUserEmail(e || null);
+    } catch {
+      setLoggedIn(false);
+    }
+  }, []);
 
   function authHeaders() {
     try {
@@ -89,63 +105,68 @@ export default function NewspaperList({
   }
 
   return (
-    <div
-      style={{
-        padding: 20,
-        fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-      }}
-    >
-      <h2 style={{ display: "inline-block", marginRight: 12 }}>My Newspapers</h2>
-      <button
-        onClick={() => (window.location.href = "/")}
-        style={{
-          padding: "6px 10px",
-          borderRadius: 6,
-          background: "#2563eb",
-          color: "white",
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        Home
-      </button>
-      <div style={{ marginBottom: 12, marginTop: 12 }}>
-        <input
-          placeholder="Search newspapers..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          style={{
-            padding: 8,
-            borderRadius: 6,
-            border: "1px solid #ddd",
-            minWidth: 300,
-          }}
-        />
-        <span style={{ marginLeft: 8, color: "#666" }}>
-          {searching ? "Searching…" : ""}
-        </span>
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+          />
+
+          <div style={styles.pageContent}>
+            <header style={{ ...styles.headerMain, marginBottom: 20 }}>
+              <div style={styles.headerTopRow}>
+                <div>
+                  <h1 style={{ margin: 0 }}>CringeBoard</h1>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    My newspapers
+                  </div>
+                </div>
+                {loggedIn && (
+                  <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+                    {userEmail ? `Hi, ${userEmail}` : "Logged in"}
+                  </div>
+                )}
+              </div>
+            </header>
+
+            <div style={{ marginBottom: 12, marginTop: 12 }}>
+              <input
+                placeholder="Search newspapers..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                style={{ ...styles.textInput, minWidth: 300, maxWidth: 520 }}
+              />
+              <span style={{ marginLeft: 8, color: "var(--muted)" }}>
+                {searching ? "Searching…" : ""}
+              </span>
+            </div>
+
+            {error && <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>}
+
+            {loading ? (
+              <div>Loading…</div>
+            ) : list.length === 0 ? (
+              <div style={{ color: "var(--muted)" }}>
+                No newspapers found. Create one using the &quot;New newspaper&quot;
+                button.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {list.map((n) => (
+                  <NewspaperCard
+                    key={n.id}
+                    newspaper={n}
+                    onDelete={handleDelete}
+                    onPatch={handlePatch}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-
-      {error && <div style={{ color: "#b02a37", marginBottom: 12 }}>{error}</div>}
-
-      {loading ? (
-        <div>Loading…</div>
-      ) : list.length === 0 ? (
-        <div style={{ color: "#666" }}>
-          No newspapers found. Create one using the &quot;New newspaper&quot; button.
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {list.map((n) => (
-            <NewspaperCard
-              key={n.id}
-              newspaper={n}
-              onDelete={handleDelete}
-              onPatch={handlePatch}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -162,9 +183,7 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
   return (
     <div
       style={{
-        border: "1px solid #eee",
-        padding: 12,
-        borderRadius: 8,
+        ...styles.panelCard,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -176,38 +195,35 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              style={{
-                width: "100%",
-                padding: 6,
-                borderRadius: 6,
-                border: "1px solid #ddd",
-              }}
+              style={{ ...styles.textInput, maxWidth: 1000 }}
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              style={{
-                width: "100%",
-                padding: 6,
-                borderRadius: 6,
-                border: "1px solid #ddd",
-                marginTop: 8,
-              }}
+              style={{ ...styles.textArea, marginTop: 8, maxWidth: 1000 }}
             />
           </div>
         ) : (
           <div>
             <div style={{ fontWeight: 700 }}>{newspaper.title}</div>
-            <div style={{ color: "#555" }}>{newspaper.description}</div>
-            <div style={{ color: "#888", fontSize: 12, marginTop: 6 }}>
+            <div style={{ color: "var(--muted)" }}>{newspaper.description}</div>
+            <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 6 }}>
               Created: {new Date(newspaper.created_at).toLocaleDateString()}
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginLeft: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginLeft: 12,
+          flexDirection: editing ? "column" : "row",
+          alignItems: editing ? "stretch" : "center",
+        }}
+      >
         {editing ? (
           <>
             <button
@@ -215,13 +231,7 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
                 onPatch(newspaper.id, { title, description });
                 setEditing(false);
               }}
-              style={{
-                padding: "6px 8px",
-                borderRadius: 6,
-                background: "#16a34a",
-                color: "white",
-                border: "none",
-              }}
+              style={styles.addThemeButton}
             >
               Save
             </button>
@@ -231,7 +241,7 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
                 setTitle(newspaper.title);
                 setDescription(newspaper.description || "");
               }}
-              style={{ padding: "6px 8px", borderRadius: 6 }}
+              style={styles.registerButton}
             >
               Cancel
             </button>
@@ -240,32 +250,14 @@ function NewspaperCard({ newspaper, onDelete, onPatch }) {
           <>
             <a
               href={`/newspapers/${newspaper.id}`}
-              style={{
-                padding: "6px 8px",
-                borderRadius: 6,
-                background: "#efefef",
-                textDecoration: "none",
-                color: "#111",
-              }}
+              style={{ ...styles.registerButton, textDecoration: "none" }}
             >
-              View
+              Details
             </a>
-            <button
-              onClick={() => setEditing(true)}
-              style={{ padding: "6px 8px", borderRadius: 6 }}
-            >
+            <button onClick={() => setEditing(true)} style={styles.registerButton}>
               Edit
             </button>
-            <button
-              onClick={() => onDelete(newspaper.id)}
-              style={{
-                padding: "6px 8px",
-                borderRadius: 6,
-                background: "#ef4444",
-                color: "white",
-                border: "none",
-              }}
-            >
+            <button onClick={() => onDelete(newspaper.id)} style={styles.logoutButton}>
               Delete
             </button>
           </>

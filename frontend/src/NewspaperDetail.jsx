@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { previewText } from "./utils.js";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 export default function NewspaperDetail({
   apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
@@ -9,6 +11,15 @@ export default function NewspaperDetail({
   const [attached, setAttached] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
+
+  const id = (() => {
+    if (typeof window === "undefined") return null;
+    const match = window.location.pathname.match(/^\/newspapers\/(\d+)$/);
+    return match ? match[1] : null;
+  })();
 
   const [searchQ, setSearchQ] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -18,51 +29,66 @@ export default function NewspaperDetail({
   const [aTitle, setATitle] = useState("");
   const [aContent, setAContent] = useState("");
   const [aUrl, setAUrl] = useState("");
-
-  const id = (() => {
-    try {
-      const m = window.location.pathname.match(/^\/newspapers\/(\d+)$/);
-      return m ? Number(m[1]) : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  function authHeaders(json = false) {
+  useEffect(() => {
     try {
       const token = localStorage.getItem("access_token");
-      const base = token ? { Authorization: `Bearer ${token}` } : {};
-      return json ? { ...base, "Content-Type": "application/json" } : base;
+      const e = localStorage.getItem("user_email");
+      setLoggedIn(!!token);
+      setUserEmail(e || null);
     } catch {
-      return json ? { "Content-Type": "application/json" } : {};
+      setLoggedIn(false);
+    }
+  }, []);
+
+  function authHeaders(includeJson = false) {
+    try {
+      const token = localStorage.getItem("access_token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      if (includeJson) headers["Content-Type"] = "application/json";
+      return headers;
+    } catch {
+      return includeJson ? { "Content-Type": "application/json" } : {};
     }
   }
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${apiBase}/v1/newspapers/${id}`);
-      if (!res.ok) throw new Error(`Failed to load newspaper (${res.status})`);
-      const j = await res.json();
-      setNewspaper(j);
-
-      const r2 = await fetch(`${apiBase}/v1/newspapers/${id}/articles`);
-      if (!r2.ok) throw new Error(`Failed to load articles (${r2.status})`);
-      const a = await r2.json();
-      setAttached(a || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiBase, id]);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!id) return;
+    let mounted = true;
+    const controller = new AbortController();
 
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${apiBase}/v1/newspapers/${id}`, {
+          headers: authHeaders(),
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`Failed to load newspaper (${res.status})`);
+        const j = await res.json();
+        if (mounted) setNewspaper(j);
+
+        const articlesRes = await fetch(`${apiBase}/v1/newspapers/${id}/articles`, {
+          headers: authHeaders(),
+          signal: controller.signal,
+        });
+        if (articlesRes.ok) {
+          const items = await articlesRes.json();
+          if (mounted) setAttached(items || []);
+        }
+      } catch (err) {
+        if (mounted) setError(err.message);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [apiBase, id]);
   // search existing articles to attach
   useEffect(() => {
     let t = null;
@@ -206,221 +232,242 @@ export default function NewspaperDetail({
     }
   }
 
-  if (!id) return <div style={{ padding: 20 }}>Invalid newspaper id.</div>;
+  if (!id)
+    return (
+      <div style={styles.appShell}>
+        <div style={styles.appSurface}>
+          <div style={styles.panelCard}>Invalid newspaper id.</div>
+        </div>
+      </div>
+    );
 
   return (
-    <div style={{ padding: 20 }}>
-      <button
-        onClick={() => (window.location.href = "/newspapers")}
-        style={{ marginBottom: 12 }}
-      >
-        ← Back
-      </button>
-      {loading ? (
-        <div>Loading…</div>
-      ) : error ? (
-        <div style={{ color: "#b02a37" }}>{error}</div>
-      ) : (
-        <div>
-          <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
-          <p>{newspaper.description}</p>
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+          />
 
-          <section style={{ marginTop: 18 }}>
-            <h3>Attached articles</h3>
-            {attached.length === 0 ? (
-              <div style={{ color: "#666" }}>No articles attached.</div>
-            ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {attached.map((a) => (
-                  <ArticleEditor
-                    key={a.id}
-                    article={a}
-                    onDelete={deleteArticle}
-                    onSave={patchArticle}
-                    onDeletePermanent={deleteArticlePermanently}
-                  />
-                ))}
+          <div style={styles.pageContent}>
+            <header style={{ ...styles.headerMain, marginBottom: 20 }}>
+              <div style={styles.headerTopRow}>
+                <div>
+                  <h1 style={{ margin: 0 }}>CringeBoard</h1>
+                  <div style={{ marginTop: 6, color: "var(--muted)" }}>
+                    Newspaper details
+                  </div>
+                </div>
+                {loggedIn && (
+                  <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+                    {userEmail ? `Hi, ${userEmail}` : "Logged in"}
+                  </div>
+                )}
               </div>
-            )}
-          </section>
+            </header>
 
-          <section style={{ marginTop: 24 }}>
-            <h3>Share</h3>
-            {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
+            {loading ? (
+              <div>Loading…</div>
+            ) : error ? (
+              <div style={{ color: "#ef4444" }}>{error}</div>
+            ) : (
               <div>
-                <div style={{ marginBottom: 8 }}>
-                  {newspaper.is_public ? (
-                    <span style={{ color: "#065f46" }}>This newspaper is public.</span>
+                <h2 style={{ marginTop: 0 }}>{newspaper.title}</h2>
+                <p style={styles.mutedText}>{newspaper.description}</p>
+
+                <section style={{ marginTop: 18 }}>
+                  <h3>Attached articles</h3>
+                  {attached.length === 0 ? (
+                    <div style={{ color: "var(--muted)" }}>No articles attached.</div>
                   ) : (
-                    <span style={{ color: "#854d0e" }}>This newspaper is private.</span>
+                    <div style={{ display: "grid", gap: 12 }}>
+                      {attached.map((a) => (
+                        <ArticleEditor
+                          key={a.id}
+                          article={a}
+                          onDelete={deleteArticle}
+                          onSave={patchArticle}
+                          onDeletePermanent={deleteArticlePermanently}
+                        />
+                      ))}
+                    </div>
                   )}
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    onClick={() => toggleShare(!newspaper.is_public)}
-                    style={{ padding: "8px 12px", borderRadius: 6 }}
-                  >
-                    {newspaper.is_public ? "Unshare" : "Make public"}
-                  </button>
-                  {newspaper.is_public && newspaper.public_token && (
-                    <>
-                      <a
-                        href={`/public/newspapers/${newspaper.public_token}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: "#2563eb" }}
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Share</h3>
+                  {Number(localStorage.getItem("user_id")) === newspaper.owner_id ? (
+                    <div>
+                      <div style={{ marginBottom: 8 }}>
+                        {newspaper.is_public ? (
+                          <span style={{ color: "#10b981" }}>
+                            This newspaper is public.
+                          </span>
+                        ) : (
+                          <span style={{ color: "#f59e0b" }}>
+                            This newspaper is private.
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                        }}
                       >
-                        View public page
-                      </a>
+                        <button
+                          onClick={() => toggleShare(!newspaper.is_public)}
+                          style={styles.createButton}
+                        >
+                          {newspaper.is_public ? "Unshare" : "Make public"}
+                        </button>
+                        {newspaper.is_public && newspaper.public_token && (
+                          <>
+                            <a
+                              href={`/public/newspapers/${newspaper.public_token}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={styles.link}
+                            >
+                              View public page
+                            </a>
+                            <button
+                              onClick={() =>
+                                navigator.clipboard?.writeText(
+                                  `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
+                                )
+                              }
+                              style={styles.registerButton}
+                            >
+                              Copy public URL
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--muted)" }}>
+                      Only the owner can change sharing settings.
+                    </div>
+                  )}
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Create a new article in this newspaper</h3>
+                  <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
+                      <input
+                        required
+                        value={aTitle}
+                        onChange={(e) => setATitle(e.target.value)}
+                        style={styles.textInput}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
+                      <textarea
+                        value={aContent}
+                        onChange={(e) => setAContent(e.target.value)}
+                        rows={6}
+                        style={styles.textArea}
+                      />
+                    </label>
+                    <label style={{ display: "block", marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, marginBottom: 6 }}>
+                        Original URL (optional)
+                      </div>
+                      <input
+                        value={aUrl}
+                        onChange={(e) => setAUrl(e.target.value)}
+                        style={styles.textInput}
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <button
-                        onClick={() =>
-                          navigator.clipboard?.writeText(
-                            `${window.location.origin}/public/newspapers/${newspaper.public_token}`,
-                          )
-                        }
-                        style={{ padding: "6px 8px", borderRadius: 6 }}
+                        type="submit"
+                        disabled={creatingArticle}
+                        style={styles.addThemeButton}
                       >
-                        Copy public URL
+                        {creatingArticle ? "Creating…" : "Create article"}
                       </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div style={{ color: "#666" }}>
-                Only the owner can change sharing settings.
+                    </div>
+                  </form>
+                </section>
+
+                <section style={{ marginTop: 24 }}>
+                  <h3>Attach existing articles</h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      marginBottom: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <input
+                      placeholder="Search articles to attach"
+                      value={searchQ}
+                      onChange={(e) => setSearchQ(e.target.value)}
+                      style={{ ...styles.textInput, flex: 1 }}
+                    />
+                    <div style={{ alignSelf: "center", color: "var(--muted)" }}>
+                      {searching ? "Searching…" : ""}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    {searchResults.map((a) => (
+                      <div
+                        key={a.id}
+                        style={{
+                          ...styles.panelCard,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{a.title}</div>
+                        <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                          {a.content
+                            ? a.content.slice(0, 140) +
+                              (a.content.length > 140 ? "…" : "")
+                            : ""}
+                        </div>
+                        <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => attachArticle(a.id)}
+                            style={styles.loginButton}
+                          >
+                            Attach
+                          </button>
+                          <a
+                            href={a.url || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ ...styles.link, alignSelf: "center" }}
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
-          </section>
-
-          <section style={{ marginTop: 24 }}>
-            <h3>Create a new article in this newspaper</h3>
-            <form onSubmit={createArticle} style={{ maxWidth: 800 }}>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>Title</div>
-                <input
-                  required
-                  value={aTitle}
-                  onChange={(e) => setATitle(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
-                />
-              </label>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>Content</div>
-                <textarea
-                  value={aContent}
-                  onChange={(e) => setAContent(e.target.value)}
-                  rows={6}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
-                />
-              </label>
-              <label style={{ display: "block", marginBottom: 8 }}>
-                <div style={{ fontSize: 13, marginBottom: 6 }}>
-                  Original URL (optional)
-                </div>
-                <input
-                  value={aUrl}
-                  onChange={(e) => setAUrl(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    borderRadius: 6,
-                    border: "1px solid #ddd",
-                  }}
-                />
-              </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="submit"
-                  disabled={creatingArticle}
-                  style={{
-                    padding: "8px 12px",
-                    background: "#16a34a",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 6,
-                  }}
-                >
-                  {creatingArticle ? "Creating…" : "Create article"}
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <section style={{ marginTop: 24 }}>
-            <h3>Attach existing articles</h3>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input
-                placeholder="Search articles to attach"
-                value={searchQ}
-                onChange={(e) => setSearchQ(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: 8,
-                  borderRadius: 6,
-                  border: "1px solid #ddd",
-                }}
-              />
-              <div style={{ alignSelf: "center", color: "#666" }}>
-                {searching ? "Searching…" : ""}
-              </div>
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {searchResults.map((a) => (
-                <div
-                  key={a.id}
-                  style={{ border: "1px solid #eee", padding: 10, borderRadius: 8 }}
-                >
-                  <div style={{ fontWeight: 600 }}>{a.title}</div>
-                  <div style={{ color: "#555", marginTop: 6 }}>
-                    {a.content
-                      ? a.content.slice(0, 140) + (a.content.length > 140 ? "…" : "")
-                      : ""}
-                  </div>
-                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => attachArticle(a.id)}
-                      style={{
-                        padding: "6px 8px",
-                        borderRadius: 6,
-                        background: "#2563eb",
-                        color: "white",
-                        border: "none",
-                      }}
-                    >
-                      Attach
-                    </button>
-                    <a
-                      href={a.url || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ color: "#2563eb", alignSelf: "center" }}
-                    >
-                      View
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -450,54 +497,29 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
   }
 
   return (
-    <div style={{ border: "1px solid #eee", padding: 12, borderRadius: 8 }}>
+    <div style={{ ...styles.panelCard }}>
       {editing ? (
         <div>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            style={{
-              width: "100%",
-              padding: 6,
-              borderRadius: 6,
-              border: "1px solid #ddd",
-            }}
+            style={{ ...styles.textInput, maxWidth: 1110 }}
           />
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
-            style={{
-              width: "100%",
-              padding: 6,
-              borderRadius: 6,
-              border: "1px solid #ddd",
-              marginTop: 8,
-            }}
+            style={{ ...styles.textArea, marginTop: 8, maxWidth: 1110 }}
           />
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            style={{
-              width: "100%",
-              padding: 6,
-              borderRadius: 6,
-              border: "1px solid #ddd",
-              marginTop: 8,
-            }}
+            style={{ ...styles.textInput, marginTop: 8, maxWidth: 1110 }}
           />
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button
-              onClick={save}
-              disabled={saving}
-              style={{
-                padding: "6px 8px",
-                borderRadius: 6,
-                background: "#16a34a",
-                color: "white",
-                border: "none",
-              }}
-            >
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}
+          >
+            <button onClick={save} disabled={saving} style={styles.addThemeButton}>
               {saving ? "Saving…" : "Save"}
             </button>
             <button
@@ -507,7 +529,7 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
                 setContent(article.content || "");
                 setUrl(article.url || "");
               }}
-              style={{ padding: "6px 8px", borderRadius: 6 }}
+              style={styles.registerButton}
             >
               Cancel
             </button>
@@ -516,47 +538,21 @@ function ArticleEditor({ article, onDelete, onSave, onDeletePermanent }) {
       ) : (
         <div>
           <div style={{ fontWeight: 700 }}>{article.title}</div>
-          <div style={{ color: "#555", marginTop: 6 }}>
+          <div style={{ color: "var(--muted)", marginTop: 6 }}>
             {previewText(article.content, 160, "No description")}
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <a
-              href={article.url || "#"}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "#2563eb" }}
-            >
-              View
-            </a>
-            <button
-              onClick={() => setEditing(true)}
-              style={{ padding: "6px 8px", borderRadius: 6 }}
-            >
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button onClick={() => setEditing(true)} style={styles.registerButton}>
               Edit
             </button>
-            <button
-              onClick={() => onDelete(article.id)}
-              style={{
-                padding: "6px 8px",
-                borderRadius: 6,
-                background: "#ef4444",
-                color: "white",
-                border: "none",
-              }}
-            >
+            <button onClick={() => onDelete(article.id)} style={styles.logoutButton}>
               Remove
             </button>
             {Number(localStorage.getItem("user_id")) === article.owner_id &&
               onDeletePermanent && (
                 <button
                   onClick={() => onDeletePermanent(article.id)}
-                  style={{
-                    padding: "6px 8px",
-                    borderRadius: 6,
-                    background: "#b91c1c",
-                    color: "white",
-                    border: "none",
-                  }}
+                  style={styles.logoutButton}
                 >
                   Delete permanently
                 </button>

@@ -17,11 +17,13 @@ class MockSettings:
         flipboard_magazines: tuple[str, ...] = (),
         flipboard_accounts: tuple[str, ...] = (),
         scheduler_interval: int = 1,
+        newsapi_key: str | None = None,
     ):
         self.rss_feeds = rss_feeds
         self.flipboard_magazines = flipboard_magazines
         self.flipboard_accounts = flipboard_accounts
         self.scheduler_interval = scheduler_interval
+        self.newsapi_key = newsapi_key
         self.project_name = "Test"
         self.aggregator_user_email = "test@test.com"
         self.aggregator_user_password = "password"

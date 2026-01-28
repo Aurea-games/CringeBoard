@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import { ArticleCard } from "./App.jsx";
+import { ArticleCard } from "./ArticleCard.jsx";
+import { styles } from "./styles.js";
+import SideMenu from "./SideMenu.jsx";
 
 export default function FavoriteArticle({
   apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000",
@@ -10,6 +12,9 @@ export default function FavoriteArticle({
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -55,57 +60,83 @@ export default function FavoriteArticle({
     };
   }, [apiBase, onFavoritesLoaded]);
 
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const e = localStorage.getItem("user_email");
+      setLoggedIn(!!token);
+      setUserEmail(e || null);
+    } catch {
+      setLoggedIn(false);
+    }
+  }, []);
+
   return (
-    <div
-      style={{
-        fontFamily: "Inter, system-ui, sans-serif",
-        padding: 20,
-        color: "var(--text)",
-      }}
-    >
-      <Header />
+    <div style={styles.appShell}>
+      <div style={styles.appSurface}>
+        <div style={styles.pageLayout}>
+          <SideMenu
+            collapsed={menuCollapsed}
+            onToggleCollapse={() => setMenuCollapsed((prev) => !prev)}
+            loggedIn={loggedIn}
+          />
 
-      <main>
-        <section style={{ margin: "20px 0" }}>
-          {loading ? (
-            <p>Loading favorite articles…</p>
-          ) : (
-            <>
-              {error && (
-                <div style={{ marginBottom: 12, color: "#ef4444" }}>
-                  <strong>Warning:</strong> Failed to fetch articles: {error}.
-                </div>
-              )}
-
-              <div style={styles.grid}>
-                {articles.length === 0 ? (
-                  <div style={{ gridColumn: "1/-1", color: "var(--muted)" }}>
-                    No favorite articles found.
+          <div style={styles.pageContent}>
+            <header style={{ ...styles.headerMain, marginBottom: 20 }}>
+              <div style={styles.headerTopRow}>
+                <h1 style={{ margin: 0 }}>CringeBoard - Favorite Articles</h1>
+                {loggedIn && (
+                  <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
+                    {userEmail ? `Hi, ${userEmail}` : "Logged in"}
                   </div>
-                ) : (
-                  articles.map((article) => (
-                    <ArticleCard
-                      key={article.id || article.title}
-                      article={article}
-                      isFavorited
-                      onFavoriteToggle={(id, shouldBeFavorite) => {
-                        if (!shouldBeFavorite) {
-                          setArticles((prev) => prev.filter((a) => a.id !== id));
-                        }
-                        onFavoriteChange?.(id, shouldBeFavorite);
-                      }}
-                    />
-                  ))
                 )}
               </div>
-            </>
-          )}
-        </section>
-      </main>
+            </header>
+            <main>
+              <section style={{ margin: "20px 0" }}>
+                {loading ? (
+                  <p>Loading favorite articles…</p>
+                ) : (
+                  <>
+                    {error && (
+                      <div style={{ marginBottom: 12, color: "#ef4444" }}>
+                        <strong>Warning:</strong> Failed to fetch articles: {error}.
+                      </div>
+                    )}
 
-      <footer style={{ marginTop: 36, color: "var(--muted)" }}>
-        <small>API base: {apiBase}</small>
-      </footer>
+                    <div style={styles.grid}>
+                      {articles.length === 0 ? (
+                        <div style={{ gridColumn: "1/-1", color: "var(--muted)" }}>
+                          No favorite articles found.
+                        </div>
+                      ) : (
+                        articles.map((article) => (
+                          <ArticleCard
+                            key={article.id || article.title}
+                            article={article}
+                            apiBase={apiBase}
+                            isFavorited
+                            onFavoriteToggle={(id, shouldBeFavorite) => {
+                              if (!shouldBeFavorite) {
+                                setArticles((prev) => prev.filter((a) => a.id !== id));
+                              }
+                              onFavoriteChange?.(id, shouldBeFavorite);
+                            }}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </section>
+            </main>
+
+            <footer style={{ marginTop: 36, color: "var(--muted)" }}>
+              <small>API base: {apiBase}</small>
+            </footer>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -115,160 +146,3 @@ FavoriteArticle.propTypes = {
   onFavoritesLoaded: PropTypes.func,
   onFavoriteChange: PropTypes.func,
 };
-
-function Header() {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [email, setEmail] = useState(null);
-
-  useEffect(() => {
-    try {
-      const token = localStorage.getItem("access_token");
-      const e = localStorage.getItem("user_email");
-      setLoggedIn(!!token);
-      setEmail(e || null);
-    } catch {
-      setLoggedIn(false);
-    }
-
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") document.body.classList.add("dark");
-  }, []);
-
-  function toggleTheme() {
-    const isDark = document.body.classList.toggle("dark");
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-  }
-
-  function goHome() {
-    window.location.href = "/";
-  }
-
-  function goLogin() {
-    window.location.href = "/login";
-  }
-
-  function goRegister() {
-    window.location.href = "/register";
-  }
-
-  function goCreateNewspaper() {
-    window.location.href = "/newspapers/create";
-  }
-
-  function goNewspapers() {
-    window.location.href = "/newspapers";
-  }
-
-  return (
-    <header style={styles.header}>
-      <h1 style={{ margin: 0 }}>CringeBoard - Favorite Articles</h1>
-
-      <div style={styles.headerRight}>
-        <button onClick={toggleTheme} style={styles.registerButton}>
-          Toggle theme
-        </button>
-
-        {loggedIn ? (
-          <>
-            <div style={{ fontSize: 13, color: "var(--muted-strong)" }}>
-              {email ? `Hi, ${email}` : "Logged in"}
-            </div>
-
-            <button onClick={goCreateNewspaper} style={styles.createButton}>
-              New newspaper
-            </button>
-
-            <button onClick={goNewspapers} style={styles.createButton}>
-              My newspapers
-            </button>
-
-            <button onClick={goHome} style={styles.createButton}>
-              Home
-            </button>
-
-            <button
-              onClick={() => (window.location.href = "/favorites")}
-              style={{ ...styles.createButton, background: "#facc15", color: "black" }}
-            >
-              Favorites
-            </button>
-
-            <button
-              onClick={() => {
-                localStorage.removeItem("access_token");
-                localStorage.removeItem("refresh_token");
-                localStorage.removeItem("user_email");
-                window.location.href = "/";
-              }}
-              style={styles.logoutButton}
-            >
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <button onClick={goLogin} style={styles.loginButton}>
-              Login
-            </button>
-            <button onClick={goRegister} style={styles.registerButton}>
-              Register
-            </button>
-          </>
-        )}
-      </div>
-    </header>
-  );
-}
-
-const styles = {
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  headerRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  loginButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "none",
-    background: "#2563eb",
-    color: "white",
-    cursor: "pointer",
-  },
-  logoutButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "none",
-    background: "#ef4444",
-    color: "white",
-    cursor: "pointer",
-  },
-  registerButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "var(--card-bg)",
-    color: "var(--text)",
-    cursor: "pointer",
-  },
-  createButton: {
-    padding: "8px 12px",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "#06b6d4",
-    color: "white",
-    cursor: "pointer",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "24px 40px",
-  },
-};
-
-Header.propTypes = {};
