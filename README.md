@@ -1,6 +1,6 @@
 # CringeBoard
 
-CringeBoard is a Flipboard‑like content aggregation app with a FastAPI backend and a React (Vite) frontend. This repository includes a complete Docker setup for local development, a scheduler placeholder for feed aggregation, and documentation in French and English.
+CringeBoard is a Flipboard???like content aggregation app with a FastAPI backend and a React (Vite) frontend. This repository includes a complete Docker setup for local development, a scheduler placeholder for feed aggregation, and documentation in French and English.
 
 ## Quick Start
 - Prerequisites: Docker Desktop or Docker Engine + docker compose v2
@@ -22,6 +22,7 @@ See full Docker guides below for details.
 - CI/CD overview: [Doc/CI_CD.md](Doc/CI_CD.md)
 - Database schema: [Doc/Database_Schema.md](Doc/Database_Schema.md)
 - Security review (auth/tokens/CORS/secrets): [Doc/Security_Review.md](Doc/Security_Review.md)
+- Tech benchmark & rationale: [Doc/Tech_Benchmark.md](Doc/Tech_Benchmark.md)
 
 ## Repository Layout
 - Backend (FastAPI): `backend/`
@@ -31,6 +32,7 @@ See full Docker guides below for details.
 ## Environment
 - Configure local settings in `.env` (see `.env.example`).
 - Default credentials are intended for local dev only; change for production.
+- Aggregator sources can be tuned via `SCHEDULER_INTERVAL`, `FLIPBOARD_MAGAZINES`, `FLIPBOARD_ACCOUNTS`, `RSS_FEEDS`, and `NEWSAPI_*`. Set `NEWSAPI_KEY` to enable NewsAPI ingestion; without it, only RSS/Flipboard feeds are used.
 
 ## Code Quality
 - **Backend (FastAPI)**: `pip install -r backend/requirements-dev.txt` then `ruff check backend/app` / `black backend/app`

@@ -20,6 +20,11 @@ class Settings:
     flipboard_magazines: tuple[str, ...] = ()
     flipboard_accounts: tuple[str, ...] = ()
     rss_feeds: tuple[str, ...] = ()
+    newsapi_key: str | None = None
+    newsapi_query: str | None = None
+    newsapi_country: str | None = None
+    newsapi_category: str | None = None
+    newsapi_page_size: int = 20
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "cors_origins", tuple(self.cors_origins or ()))
@@ -40,6 +45,11 @@ def get_settings() -> Settings:
             "https://hnrss.org/frontpage,https://www.wired.com/feed/rss",
         )
     )
+    newsapi_key = os.getenv("NEWSAPI_KEY") or None
+    newsapi_query = os.getenv("NEWSAPI_QUERY") or None
+    newsapi_country = os.getenv("NEWSAPI_COUNTRY") or None
+    newsapi_category = os.getenv("NEWSAPI_CATEGORY") or None
+    newsapi_page_size = int(os.getenv("NEWSAPI_PAGE_SIZE", "20"))
 
     return Settings(
         project_name=os.getenv("PROJECT_NAME", "CringeBoard API"),
@@ -50,6 +60,11 @@ def get_settings() -> Settings:
         flipboard_magazines=tuple(flipboard_magazines),
         flipboard_accounts=tuple(flipboard_accounts),
         rss_feeds=tuple(rss_feeds),
+        newsapi_key=newsapi_key,
+        newsapi_query=newsapi_query,
+        newsapi_country=newsapi_country,
+        newsapi_category=newsapi_category,
+        newsapi_page_size=newsapi_page_size,
     )
 
 
