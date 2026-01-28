@@ -104,6 +104,19 @@ services:
       NEWSAPI_PAGE_SIZE: ${NEWSAPI_PAGE_SIZE:-20}
     command: python -m app.scheduler
 
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    restart: unless-stopped
+    environment:
+      SWAGGER_JSON: /usr/share/nginx/html/openapi.yaml
+    volumes:
+      - ./Doc/API_Swagger.yaml:/usr/share/nginx/html/openapi.yaml:ro
+    ports:
+      - "${SWAGGER_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_started
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped
