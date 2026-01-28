@@ -1,19 +1,53 @@
 :root {
-  --bg: #ffffff;
-  --text: #111111;
+  --bg: #f5f7fb;
+  --text: #0f172a;
   --card-bg: #ffffff;
-  --border: #e5e7eb;
-  --muted: #555555;
-  --muted-strong: #333333;
+  --border: #e2e8f0;
+  --muted: #5b6475;
+  --muted-strong: #1f2937;
+  --app-bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-alt: #f1f5fb;
+  --surface-strong: #e7edf7;
+  --panel-border: #d7e0ef;
+  --card-gradient: linear-gradient(135deg, #c9d9ff, #b7ccff);
+  --card-text: #0f172a;
+  --chip-bg: rgba(255, 255, 255, 0.7);
+  --chip-text: #1f2937;
+  --button-bg: #eef2ff;
+  --button-border: #c7d2fe;
+  --button-text: #1e293b;
+  --button-primary: #a5b4fc;
+  --button-primary-text: #0f172a;
+  --button-danger: #fecaca;
+  --button-danger-text: #7f1d1d;
+  --button-accent: #c7d2fe;
 }
 
 body.dark {
-  --bg: #18181b;
-  --text: #e4e4e7;
-  --card-bg: #27272a;
-  --border: #3f3f46;
-  --muted: #a1a1aa;
-  --muted-strong: #e4e4e7;
+  --bg: #000000;
+  --text: #e5e7eb;
+  --card-bg: #111827;
+  --border: #1f2937;
+  --muted: #9ca3af;
+  --muted-strong: #e5e7eb;
+  --app-bg: #000000;
+  --surface: #0f172a;
+  --surface-alt: #111827;
+  --surface-strong: #0b1220;
+  --panel-border: #1f2937;
+  --card-gradient: linear-gradient(135deg, #0b1a33, #132148);
+  --card-text: #e5e7eb;
+  --chip-bg: rgba(255, 255, 255, 0.08);
+  --chip-text: #e2e8f0;
+  --button-bg: #1f2937;
+  --button-border: #374151;
+  --button-text: #e5e7eb;
+  --button-primary: #6366f1;
+  --button-primary-text: #ffffff;
+  --button-danger: #ef4444;
+  --button-danger-text: #ffffff;
+  --button-accent: #8b5cf6;
 }
 
 body {
