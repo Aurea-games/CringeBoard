@@ -108,9 +108,11 @@ services:
     image: swaggerapi/swagger-ui:latest
     restart: unless-stopped
     environment:
-      SWAGGER_JSON: /usr/share/nginx/html/openapi.yaml
+      # Place the spec outside the nginx doc root so entrypoint symlink doesn't self-copy
+      SWAGGER_JSON: /tmp/openapi-spec.yaml
     volumes:
-      - ./Doc/API_Swagger.yaml:/usr/share/nginx/html/openapi.yaml:ro
+      # Mount spec where the entrypoint expects, then it will symlink into /usr/share/nginx/html
+      - ./Doc/API_Swagger.yaml:/tmp/openapi-spec.yaml:ro
     ports:
       - "${SWAGGER_PORT:-8080}:8080"
     depends_on:
