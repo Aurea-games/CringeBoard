@@ -49,4 +49,3 @@ See full Docker guides below for details.
 - The scheduler (`worker` profile) is a placeholder loop that you can extend for feed aggregation.
 
 ---
-Happy hacking!
